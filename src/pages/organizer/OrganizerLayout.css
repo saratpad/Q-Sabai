@@ -1,0 +1,41 @@
+.organizer-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.organizer-body {
+  display: flex;
+  flex: 1;
+}
+
+.organizer-main {
+  flex: 1;
+  padding: var(--space-8);
+  overflow-y: auto;
+  min-height: calc(100vh - 64px);
+}
+
+.nav-role-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--color-secondary-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  -webkit-text-fill-color: initial;
+  background-clip: initial;
+}
+
+.nav-user-name {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .organizer-main {
+    padding: var(--space-4);
+  }
+}

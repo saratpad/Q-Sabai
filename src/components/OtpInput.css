@@ -1,0 +1,51 @@
+.otp-input-container {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  align-items: center;
+}
+
+.otp-cell {
+  width: 52px;
+  height: 60px;
+  text-align: center;
+  font-size: 1.625rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--transition-base);
+  caret-color: var(--color-primary);
+}
+
+.otp-cell:focus {
+  border-color: var(--color-primary);
+  background: rgba(14, 165, 233, 0.05);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+}
+
+.otp-cell.filled {
+  border-color: var(--color-secondary-light);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-primary-light);
+}
+
+.otp-cell.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Separator dot in the middle (between 3rd and 4th) */
+@media (max-width: 380px) {
+  .otp-cell {
+    width: 42px;
+    height: 52px;
+    font-size: 1.375rem;
+  }
+  .otp-input-container {
+    gap: var(--space-2);
+  }
+}
