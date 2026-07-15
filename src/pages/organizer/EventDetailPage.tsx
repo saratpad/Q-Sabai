@@ -83,7 +83,25 @@ export default function EventDetailPage() {
           }
         }
       }
-      if (bookingsRes.data) setBookings(bookingsRes.data as BookingWithProfile[])
+      if (bookingsRes.data) {
+        const sortedBookings = (bookingsRes.data as BookingWithProfile[]).sort((a, b) => {
+          if (a.event_slots && b.event_slots) {
+            const dateA = a.event_slots.slot_date || ''
+            const dateB = b.event_slots.slot_date || ''
+            if (dateA !== dateB) return dateA.localeCompare(dateB)
+            
+            const timeA = a.event_slots.start_time || ''
+            const timeB = b.event_slots.start_time || ''
+            if (timeA !== timeB) return timeA.localeCompare(timeB)
+          } else if (a.event_slots) {
+            return -1
+          } else if (b.event_slots) {
+            return 1
+          }
+          return a.queue_number - b.queue_number
+        })
+        setBookings(sortedBookings)
+      }
       if (fieldsRes.data) setCustomFields(fieldsRes.data)
       if (sessionRes.data) setQueueSession(sessionRes.data)
       if (childrenRes.data) setChildEvents(childrenRes.data)

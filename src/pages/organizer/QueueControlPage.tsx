@@ -103,8 +103,9 @@ export default function QueueControlPage() {
         .in('id', nextBookings.map(b => b.id))
 
       setSession(prev => prev ? { ...prev, current_numbers: newNumbers } : prev)
+      const nextIds = nextBookings.map(b => b.id)
       setBookings(prev => prev.map(b =>
-        newNumbers.includes(b.queue_number) ? { ...b, status: 'called' as Booking['status'] } : b
+        nextIds.includes(b.id) ? { ...b, status: 'called' as Booking['status'], called_at: new Date().toISOString() } : b
       ))
 
       // TTS Broadcast
@@ -135,7 +136,7 @@ export default function QueueControlPage() {
   const handleRepeat = async () => {
     if (!session || session.current_numbers.length === 0) return
     const names = session.current_numbers.map(num => {
-      const b = bookings.find(x => x.queue_number === num)
+      const b = bookings.find(x => x.queue_number === num && x.status === 'called')
       return b ? getNameForBooking(b) : ''
     })
     
@@ -156,12 +157,12 @@ export default function QueueControlPage() {
     toast.success('เรียกซ้ำแล้ว')
   }
 
-  const handleMarkAbsent = async (queueNum: number) => {
-    const booking = bookings.find(b => b.queue_number === queueNum)
+  const handleMarkAbsent = async (bookingId: string) => {
+    const booking = bookings.find(b => b.id === bookingId)
     if (!booking) return
     await supabase.from('bookings').update({ status: 'absent' }).eq('id', booking.id)
     setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'absent' as Booking['status'] } : b))
-    toast.success(`คิว #${queueNum} - ไม่มา`)
+    toast.success(`คิว #${booking.queue_number} - ไม่มา`)
   }
 
 
@@ -208,12 +209,14 @@ export default function QueueControlPage() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <div className="current-queue-numbers">
                   {currentNumbers.map(num => {
-                    const booking = bookings.find(b => b.queue_number === num)
+                    const booking = bookings.find(b => b.queue_number === num && b.status === 'called')
                     const name = booking ? getNameForBooking(booking) : null
+                    const slot = booking?.slot_id ? slots.find(s => s.id === booking.slot_id) : null
                     return (
                       <div key={num} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div className="current-num" style={{ lineHeight: 1.1 }}>{prefix}{String(num).padStart(3, '0')}</div>
                         {name && <div style={{ fontSize: '1.25rem', color: 'var(--color-primary)', marginTop: '4px' }}>คุณ {name}</div>}
+                        {slot && <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>รอบ {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)} น.</div>}
                       </div>
                     )
                   })}
@@ -300,13 +303,15 @@ export default function QueueControlPage() {
               </div>
               {calledBookings.map(b => {
                 const name = getNameForBooking(b)
+                const slot = b.slot_id ? slots.find(s => s.id === b.slot_id) : null
                 return (
                   <div key={b.id} className="queue-item queue-item-called">
                     <div style={{ flex: 1 }}>
                       <span className="queue-item-num">#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
                       {name && <span className="queue-item-name">{name}</span>}
+                      {slot && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginLeft: '8px' }}>รอบ {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)} น.</span>}
                     </div>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleMarkAbsent(b.queue_number)}>ไม่มา</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleMarkAbsent(b.id)}>ไม่มา</button>
                     <button className="btn btn-success btn-sm" onClick={async () => {
                       await supabase.from('bookings').update({ status: 'present' }).eq('id', b.id)
                       setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'present' as Booking['status'] } : x))
@@ -326,10 +331,14 @@ export default function QueueControlPage() {
               </div>
               {absentBookings.map(b => {
                 const name = getNameForBooking(b)
+                const slot = b.slot_id ? slots.find(s => s.id === b.slot_id) : null
                 return (
                   <div key={b.id} className="queue-item" style={{ opacity: 0.8 }}>
-                    <span className="queue-item-num" style={{ color: 'var(--color-danger)' }}>#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
-                    {name && <span className="queue-item-name">{name}</span>}
+                    <div style={{ flex: 1 }}>
+                      <span className="queue-item-num" style={{ color: 'var(--color-danger)' }}>#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
+                      {name && <span className="queue-item-name">{name}</span>}
+                      {slot && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginLeft: '8px' }}>รอบ {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)} น.</span>}
+                    </div>
                     <button className="btn btn-primary btn-sm" onClick={async () => {
                       // Insert queue: Call immediately
                       const { error } = await supabase

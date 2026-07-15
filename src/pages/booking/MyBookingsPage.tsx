@@ -9,6 +9,7 @@ import toast from 'react-hot-toast'
 
 interface BookingWithEvent extends Booking {
   events: Event
+  event_slots?: any
 }
 
 const STATUS_LABELS: Record<Booking['status'], string> = {
@@ -34,7 +35,7 @@ export default function MyBookingsPage() {
     setLoading(true)
     const { data } = await supabase
       .from('bookings')
-      .select('*, events(*)')
+      .select('*, events(*), event_slots(*)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     setBookings((data || []) as BookingWithEvent[])
@@ -98,7 +99,7 @@ export default function MyBookingsPage() {
                 alignItems: 'center',
                 gap: 'var(--space-4)',
               }}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>หมายเลขคิว</div>
                   <div style={{
                     fontFamily: 'var(--font-mono)',
@@ -112,6 +113,11 @@ export default function MyBookingsPage() {
                   }}>
                     #{(booking.events.settings as any)?.queue_prefix || ''}{String(booking.queue_number).padStart(3, '0')}
                   </div>
+                  {booking.event_slots && (
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', marginTop: '4px', fontWeight: 600 }}>
+                      รอบ: {booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)} น.
+                    </div>
+                  )}
                 </div>
                 <button
                   className="btn btn-ghost btn-sm"

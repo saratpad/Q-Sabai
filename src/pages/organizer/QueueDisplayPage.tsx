@@ -8,6 +8,7 @@ import './QueueDisplayPage.css'
 
 interface BookingDisplay extends Booking {
   field_responses: Record<string, string>
+  event_slots?: any
 }
 
 interface TtsPayload {
@@ -121,7 +122,7 @@ export default function QueueDisplayPage() {
       const currentNums = sessionsData?.flatMap(s => s.current_numbers) || []
       const newCalledBookings: Record<string, BookingDisplay[]> = {}
       if (currentNums.length > 0) {
-        const { data: bookingsData } = await supabase.from('bookings').select('*').in('event_id', eventIds).in('queue_number', currentNums)
+        const { data: bookingsData } = await supabase.from('bookings').select('*, event_slots(*)').in('event_id', eventIds).in('queue_number', currentNums)
         bookingsData?.forEach(b => {
           if (!newCalledBookings[b.event_id]) newCalledBookings[b.event_id] = []
           newCalledBookings[b.event_id].push(b as BookingDisplay)
@@ -185,7 +186,7 @@ export default function QueueDisplayPage() {
           if (JSON.stringify(newNums) !== JSON.stringify(prevNumbersRef.current[id])) {
             prevNumbersRef.current[id] = newNums
             if (newNums.length > 0) {
-              const { data } = await supabase.from('bookings').select('*').eq('event_id', id).in('queue_number', newNums)
+              const { data } = await supabase.from('bookings').select('*, event_slots(*)').eq('event_id', id).in('queue_number', newNums)
               if (data) {
                 setCalledBookings(prev => ({ ...prev, [id]: data as BookingDisplay[] }))
               }
@@ -275,7 +276,8 @@ export default function QueueDisplayPage() {
                       </div>
                     ) : (
                       showNumbers.map(num => {
-                        const booking = called.find(b => b.queue_number === num)
+                        const sortedCalled = [...called].sort((a, b) => new Date(b.called_at || 0).getTime() - new Date(a.called_at || 0).getTime())
+                        const booking = sortedCalled.find(b => b.queue_number === num)
                         const name = booking && session?.show_name ? getNameForBooking(ev.id, booking) : null
                         return (
                           <div key={num} className="queue-number-card slide-up" style={{ padding: '16px', marginBottom: '8px' }}>
@@ -283,6 +285,11 @@ export default function QueueDisplayPage() {
                               {prefix}{String(num).padStart(3, '0')}
                             </div>
                             {name && <div className="queue-number-name" style={{ fontSize: 'clamp(1.25rem, 2vw, 2rem)', marginTop: '8px' }}>คุณ {name}</div>}
+                            {booking?.event_slots && (
+                              <div className="queue-number-slot" style={{ fontSize: 'clamp(0.875rem, 1.2vw, 1.25rem)', color: 'var(--color-primary)', marginTop: '4px', fontWeight: 600 }}>
+                                รอบ {booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)} น.
+                              </div>
+                            )}
                           </div>
                         )
                       })
@@ -348,7 +355,8 @@ export default function QueueDisplayPage() {
             </div>
           ) : (
             showNumbers.map(num => {
-              const booking = called.find(b => b.queue_number === num)
+              const sortedCalled = [...called].sort((a, b) => new Date(b.called_at || 0).getTime() - new Date(a.called_at || 0).getTime())
+              const booking = sortedCalled.find(b => b.queue_number === num)
               const name = booking && session?.show_name ? getNameForBooking(parentEvent!.id, booking) : null
               return (
                 <div key={num} className="queue-number-card slide-up">
@@ -357,6 +365,11 @@ export default function QueueDisplayPage() {
                     {prefix}{String(num).padStart(3, '0')}
                   </div>
                   {name && <div className="queue-number-name">คุณ {name}</div>}
+                  {booking?.event_slots && (
+                    <div className="queue-number-slot" style={{ fontSize: 'clamp(1rem, 1.5vw, 1.5rem)', color: 'var(--color-primary)', marginTop: '8px', fontWeight: 600 }}>
+                      รอบ {booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)} น.
+                    </div>
+                  )}
                 </div>
               )
             })

@@ -73,6 +73,7 @@ export default function EditEventPage() {
         setTitle(event.title)
         setDescription(event.description || '')
         setQueuePrefix((event.settings as any)?.queue_prefix || '')
+        setQueueNumberingType((event.settings as any)?.queue_numbering_type || 'normal')
         setTtsPhrase((event.settings as any)?.tts_phrase || 'ขอเชิญหมายเลข')
         setTtsCallName((event.settings as any)?.tts_call_name ?? true)
         setTtsVoiceGender((event.settings as any)?.tts_voice_gender || 'female')
@@ -121,6 +122,7 @@ export default function EditEventPage() {
   const [ttsUseEnding, setTtsUseEnding] = useState(true)
   const [ttsEndingWord, setTtsEndingWord] = useState('ค่ะ')
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled'>('unlimited')
+  const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [slots, setSlots] = useState<SlotInput[]>([
     { id: uuidv4(), slot_date: '', start_time: '09:00', end_time: '10:00', capacity: 10 }
   ])
@@ -207,6 +209,7 @@ export default function EditEventPage() {
         queue_type: queueType,
         settings: { 
           queue_prefix: queuePrefix.trim(),
+          queue_numbering_type: queueNumberingType,
           tts_phrase: ttsPhrase.trim() || 'ขอเชิญหมายเลข',
           tts_call_name: ttsCallName,
           tts_voice_gender: ttsVoiceGender,
@@ -334,6 +337,53 @@ export default function EditEventPage() {
                     ตัวอย่างคิวที่จะได้: {queuePrefix ? queuePrefix : ''}001, {queuePrefix ? queuePrefix : ''}002
                   </div>
                 </div>
+
+                {queueType === 'scheduled' && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>รูปแบบการจัดคิว (Queue Numbering Style)</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="radio"
+                          name="queue_numbering_type"
+                          value="normal"
+                          checked={queueNumberingType === 'normal'}
+                          onChange={() => setQueueNumberingType('normal')}
+                          style={{ marginTop: '3px' }}
+                        />
+                        <div>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>1. แบบปกติ:</strong> <span style={{ color: 'var(--color-text-secondary)' }}>เลขคิวจะรันต่อเนื่องไปเรื่อยๆ ทุกรอบเวลา (เช่น {queuePrefix || ''}001, {queuePrefix || ''}002, {queuePrefix || ''}003, ...)</span>
+                        </div>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="radio"
+                          name="queue_numbering_type"
+                          value="round_reset"
+                          checked={queueNumberingType === 'round_reset'}
+                          onChange={() => setQueueNumberingType('round_reset')}
+                          style={{ marginTop: '3px' }}
+                        />
+                        <div>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>2. แบบลำดับตามรอบ:</strong> <span style={{ color: 'var(--color-text-secondary)' }}>เลขคิวจะเริ่มต้นใหม่ที่ 1 ในทุกๆ รอบเวลา (เช่น รอบแรก: {queuePrefix || ''}001-{queuePrefix || ''}007, รอบถัดไป: {queuePrefix || ''}001-{queuePrefix || ''}007) และระบุรอบในตั๋ว</span>
+                        </div>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="radio"
+                          name="queue_numbering_type"
+                          value="round_fixed"
+                          checked={queueNumberingType === 'round_fixed'}
+                          onChange={() => setQueueNumberingType('round_fixed')}
+                          style={{ marginTop: '3px' }}
+                        />
+                        <div>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>3. แบบฟิกเลขตามรอบ:</strong> <span style={{ color: 'var(--color-text-secondary)' }}>เลขคิวจะรันตามโควตาความจุสะสมของแต่ละรอบเวลา (เช่น รอบแรก (รับ 7 คน): {queuePrefix || ''}001-{queuePrefix || ''}007, รอบสอง (รับ 7 คน): {queuePrefix || ''}008-{queuePrefix || ''}014 โดยเรียงตามโควตารอบจอง)</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">คำพูดเรียกคิว (TTS Phrase)</label>
