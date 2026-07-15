@@ -558,7 +558,7 @@ export default function PublicBookingPage() {
                       ) : isClosed ? (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ปิด</div>
                       ) : (
-                        <div className="slot-available">ว่าง {available} ที่</div>
+                        <div className="slot-available">ว่าง {available}/{slot.capacity} ที่</div>
                       )}
                     </div>
                   )
