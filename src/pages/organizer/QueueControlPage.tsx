@@ -22,25 +22,53 @@ export default function QueueControlPage() {
   const [calling, setCalling] = useState(false)
   const [unlockedSlotId, setUnlockedSlotId] = useState<string | null>(null)
 
+  const fetchBookings = async () => {
+    if (!eventId) return
+    const { data } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('event_id', eventId)
+      .neq('status', 'cancelled')
+      .order('queue_number')
+    if (data) setBookings(data as BookingDisplay[])
+  }
+
   useEffect(() => {
     fetchData()
+
+    if (!eventId) return
+
+    const channel = supabase
+      .channel(`queue-control-bookings-${eventId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `event_id=eq.${eventId}`,
+      }, () => {
+        fetchBookings()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [eventId])
 
   const fetchData = async () => {
     if (!eventId) return
     setLoading(true)
     try {
-      const [eventRes, sessionRes, bookingsRes, fieldsRes, slotsRes] = await Promise.all([
+      const [eventRes, sessionRes, fieldsRes, slotsRes] = await Promise.all([
         supabase.from('events').select('*').eq('id', eventId).single(),
         supabase.from('queue_sessions').select('*').eq('event_id', eventId).single(),
-        supabase.from('bookings').select('*').eq('event_id', eventId).neq('status', 'cancelled').order('queue_number'),
         supabase.from('custom_fields').select('*').eq('event_id', eventId).order('sort_order'),
         supabase.from('event_slots').select('*').eq('event_id', eventId).order('start_time'),
       ])
 
       if (eventRes.data) setEvent(eventRes.data)
       if (sessionRes.data) setSession(sessionRes.data)
-      if (bookingsRes.data) setBookings(bookingsRes.data as BookingDisplay[])
+      await fetchBookings()
       if (fieldsRes.data) setCustomFields(fieldsRes.data)
       if (slotsRes.data) setSlots(slotsRes.data)
     } finally {

@@ -54,17 +54,63 @@ export default function EventDetailPage() {
 
   const bookingUrl = `${window.location.origin}/book/${eventId}?openExternalBrowser=1`
 
+  const fetchBookings = async () => {
+    if (!eventId) return
+    const { data } = await supabase
+      .from('bookings')
+      .select('*, profiles(*), event_slots(*)')
+      .eq('event_id', eventId)
+      .order('queue_number')
+
+    if (data) {
+      const sortedBookings = (data as BookingWithProfile[]).sort((a, b) => {
+        if (a.event_slots && b.event_slots) {
+          const dateA = a.event_slots.slot_date || ''
+          const dateB = b.event_slots.slot_date || ''
+          if (dateA !== dateB) return dateA.localeCompare(dateB)
+          
+          const timeA = a.event_slots.start_time || ''
+          const timeB = b.event_slots.start_time || ''
+          if (timeA !== timeB) return timeA.localeCompare(timeB)
+        } else if (a.event_slots) {
+          return -1
+        } else if (b.event_slots) {
+          return 1
+        }
+        return a.queue_number - b.queue_number
+      })
+      setBookings(sortedBookings)
+    }
+  }
+
   useEffect(() => {
     fetchAll()
+
+    if (!eventId) return
+
+    const channel = supabase
+      .channel(`bookings-detail-${eventId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `event_id=eq.${eventId}`,
+      }, () => {
+        fetchBookings()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [eventId])
 
   const fetchAll = async () => {
     if (!eventId) return
     setLoading(true)
     try {
-      const [eventRes, bookingsRes, fieldsRes, sessionRes, lineRes, childrenRes] = await Promise.all([
+      const [eventRes, fieldsRes, sessionRes, lineRes, childrenRes] = await Promise.all([
         supabase.from('events').select('*').eq('id', eventId).single(),
-        supabase.from('bookings').select('*, profiles(*), event_slots(*)').eq('event_id', eventId).order('queue_number'),
         supabase.from('custom_fields').select('*').eq('event_id', eventId).order('sort_order'),
         supabase.from('queue_sessions').select('*').eq('event_id', eventId).single(),
         supabase.from('line_settings').select('*').eq('event_id', eventId).maybeSingle(),
@@ -83,25 +129,9 @@ export default function EventDetailPage() {
           }
         }
       }
-      if (bookingsRes.data) {
-        const sortedBookings = (bookingsRes.data as BookingWithProfile[]).sort((a, b) => {
-          if (a.event_slots && b.event_slots) {
-            const dateA = a.event_slots.slot_date || ''
-            const dateB = b.event_slots.slot_date || ''
-            if (dateA !== dateB) return dateA.localeCompare(dateB)
-            
-            const timeA = a.event_slots.start_time || ''
-            const timeB = b.event_slots.start_time || ''
-            if (timeA !== timeB) return timeA.localeCompare(timeB)
-          } else if (a.event_slots) {
-            return -1
-          } else if (b.event_slots) {
-            return 1
-          }
-          return a.queue_number - b.queue_number
-        })
-        setBookings(sortedBookings)
-      }
+      
+      await fetchBookings()
+
       if (fieldsRes.data) setCustomFields(fieldsRes.data)
       if (sessionRes.data) setQueueSession(sessionRes.data)
       if (childrenRes.data) setChildEvents(childrenRes.data)
