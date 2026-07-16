@@ -521,9 +521,6 @@ export default function PublicBookingPage() {
             <button className="btn btn-secondary btn-sm" onClick={handleDownloadTicket}>
               ⬇️ ดาวน์โหลดตั๋ว
             </button>
-            <button className="btn btn-danger btn-sm" onClick={handleCancelBooking}>
-              ✕ ยกเลิกการจอง
-            </button>
             {event.parent_id && (
               <button className="btn btn-ghost btn-sm" onClick={() => window.location.href = `/book/${event.parent_id}`} style={{ border: '1px solid var(--color-border)' }}>
                 ✕ ปิดหน้าต่าง (เลือกกิจกรรมอื่น)

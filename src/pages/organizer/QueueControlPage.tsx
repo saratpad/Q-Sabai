@@ -45,10 +45,13 @@ export default function QueueControlPage() {
         schema: 'public',
         table: 'bookings',
         filter: `event_id=eq.${eventId}`,
-      }, () => {
+      }, (payload) => {
+        console.log('Realtime bookings change received (QueueControl):', payload)
         fetchBookings()
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log(`Realtime bookings subscription status (QueueControl): ${status}`)
+      })
 
     return () => {
       supabase.removeChannel(channel)
