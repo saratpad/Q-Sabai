@@ -44,11 +44,23 @@ BEGIN
         OR (slot_date = r.slot_date AND start_time = r.start_time AND id < NEW.slot_id)
       );
 
-    -- Calculate booking sequence within this slot
-    SELECT COALESCE(COUNT(*), 0) + 1
+    -- Calculate booking sequence within this slot by finding the first available number in the range [1, capacity]
+    -- that is not currently assigned to any active (non-cancelled) booking in this slot.
+    SELECT MIN(s.num)
     INTO v_slot_offset
-    FROM public.bookings
-    WHERE slot_id = NEW.slot_id AND status != 'cancelled';
+    FROM generate_series(1, r.capacity) s(num)
+    LEFT JOIN public.bookings b ON b.slot_id = NEW.slot_id 
+                                AND b.status != 'cancelled' 
+                                AND b.queue_number = v_prev_slots_capacity + s.num
+    WHERE b.id IS NULL;
+
+    -- If no gap is found (slot is full or over capacity), fall back to MAX(queue_number) + 1
+    IF v_slot_offset IS NULL THEN
+      SELECT COALESCE(MAX(queue_number) - v_prev_slots_capacity, 0) + 1
+      INTO v_slot_offset
+      FROM public.bookings
+      WHERE slot_id = NEW.slot_id AND status != 'cancelled';
+    END IF;
 
     next_number := v_prev_slots_capacity + v_slot_offset;
 
