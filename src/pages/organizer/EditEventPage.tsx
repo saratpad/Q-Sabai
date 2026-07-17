@@ -448,10 +448,14 @@ export default function EditEventPage() {
                         value={ttsChimeStyle}
                         onChange={e => setTtsChimeStyle(e.target.value as any)}
                       >
-                        <option value="classic">คลาสสิก (ปิ๊งป่อง)</option>
+                        <option value="classic">คลาสสิก (ปิ๊งป่องโรงพยาบาล)</option>
                         <option value="bell">กระดิ่งแก้ว (Crystal Bell)</option>
-                        <option value="dingdong">ดิงดอง (Doorbell)</option>
+                        <option value="dingdong">ดิงดอง (Doorbell ห้างสรรพสินค้า)</option>
                         <option value="melodic">ท่วงทำนองอบอุ่น (Melodic Chord)</option>
+                        <option value="alert">แจ้งเตือนเร่งด่วน (Attention Alert)</option>
+                        <option value="elevator">ลิฟต์/โรงแรม (Classic Elevator Ding)</option>
+                        <option value="digital">ดิจิตอลล้ำสมัย (Modern Digital notification)</option>
+                        <option value="triple_bell">กระดิ่งสามชิ้นกังวาน (Triple Bell Chime)</option>
                       </select>
                       <button
                         type="button"

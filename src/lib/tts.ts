@@ -14,12 +14,12 @@ export interface TTSOptions {
   useEndingWord?: boolean
   endingWord?: string
   playChime?: boolean
-  chimeStyle?: 'classic' | 'bell' | 'dingdong' | 'melodic'
+  chimeStyle?: 'classic' | 'bell' | 'dingdong' | 'melodic' | 'alert' | 'elevator' | 'digital' | 'triple_bell'
 }
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
 
-export type ChimeStyle = 'classic' | 'bell' | 'dingdong' | 'melodic';
+export type ChimeStyle = 'classic' | 'bell' | 'dingdong' | 'melodic' | 'alert' | 'elevator' | 'digital' | 'triple_bell';
 
 // ── Shared AudioContext singleton ──────────────────────────────────────────
 // Creating a new AudioContext every call causes "suspended" state because
@@ -171,6 +171,82 @@ export const playChime = async (style: ChimeStyle = 'classic'): Promise<void> =>
         });
 
         setTimeout(() => resolve(), 1800);
+
+      } else if (style === 'alert') {
+        // High Alert/Attention Chime (G6 -> E6)
+        const notes = [1567.98, 1318.51];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const start = now + idx * 0.15;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.25, start + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.8);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay);
+          osc.start(start);
+          osc.stop(start + 0.9);
+        });
+        setTimeout(() => resolve(), 1300);
+
+      } else if (style === 'elevator') {
+        // Soft Elevator/Hotel Ding (C5)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0); // very long decay
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.connect(delay);
+        osc.start(now);
+        osc.stop(now + 2.1);
+        setTimeout(() => resolve(), 1500);
+
+      } else if (style === 'digital') {
+        // Modern Digital Notification (B5 -> E6)
+        const notes = [987.77, 1318.51];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const start = now + idx * 0.08; // very fast
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay);
+          osc.start(start);
+          osc.stop(start + 0.6);
+        });
+        setTimeout(() => resolve(), 1000);
+
+      } else if (style === 'triple_bell') {
+        // High Triple Bell Chime (C6 -> E6 -> G6)
+        const notes = [1046.50, 1318.51, 1567.98];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const start = now + idx * 0.12;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.22, start + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.0);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay);
+          osc.start(start);
+          osc.stop(start + 1.1);
+        });
+        setTimeout(() => resolve(), 1600);
 
       } else {
         // Classic Hospital/Airport Chime (E5 -> G5 -> C6)
