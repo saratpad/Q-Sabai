@@ -62,7 +62,8 @@ export default function QueueDisplayPage() {
           voiceGender: p.voiceGender || 'female',
           useEndingWord: p.useEndingWord ?? true,
           endingWord: p.endingWord || 'ค่ะ',
-          playChime: p.playChime ?? true
+          playChime: p.playChime ?? true,
+          chimeStyle: p.chimeStyle || 'classic'
         }).catch(err => console.error("TTS Error:", err))
         
         // Add a small pause between announcements

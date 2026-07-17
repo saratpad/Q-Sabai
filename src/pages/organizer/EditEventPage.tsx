@@ -80,6 +80,7 @@ export default function EditEventPage() {
         setTtsUseEnding((event.settings as any)?.tts_use_ending ?? true)
         setTtsEndingWord((event.settings as any)?.tts_ending_word || 'ค่ะ')
         setTtsPlayChime((event.settings as any)?.tts_play_chime ?? true)
+        setTtsChimeStyle((event.settings as any)?.tts_chime_style || 'classic')
         setQueueType(event.queue_type as any)
         if (event.banner_url) {
           setBannerPreview(event.banner_url)
@@ -123,6 +124,7 @@ export default function EditEventPage() {
   const [ttsUseEnding, setTtsUseEnding] = useState(true)
   const [ttsEndingWord, setTtsEndingWord] = useState('ค่ะ')
   const [ttsPlayChime, setTtsPlayChime] = useState(true)
+  const [ttsChimeStyle, setTtsChimeStyle] = useState<'classic' | 'bell' | 'dingdong' | 'melodic'>('classic')
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled'>('unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [slots, setSlots] = useState<SlotInput[]>([
@@ -217,7 +219,8 @@ export default function EditEventPage() {
           tts_voice_gender: ttsVoiceGender,
           tts_use_ending: ttsUseEnding,
           tts_ending_word: ttsEndingWord.trim(),
-          tts_play_chime: ttsPlayChime
+          tts_play_chime: ttsPlayChime,
+          tts_chime_style: ttsChimeStyle
         },
       }
       if (bannerFile) {
@@ -426,14 +429,42 @@ export default function EditEventPage() {
                     </select>
                   </div>
                   
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer', marginBottom: '8px' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={ttsPlayChime} 
-                      onChange={e => setTtsPlayChime(e.target.checked)} 
-                    />
-                    เล่นเสียงเอฟเฟกต์ (ปิ๊งป่อง) ก่อนเรียกคิว
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={ttsPlayChime} 
+                        onChange={e => setTtsPlayChime(e.target.checked)} 
+                      />
+                      เล่นเสียงเอฟเฟกต์นำก่อนเรียกคิว
+                    </label>
+                  </div>
+
+                  {ttsPlayChime && (
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <select
+                        className="form-input form-select"
+                        style={{ flex: 1 }}
+                        value={ttsChimeStyle}
+                        onChange={e => setTtsChimeStyle(e.target.value as any)}
+                      >
+                        <option value="classic">คลาสสิก (ปิ๊งป่อง)</option>
+                        <option value="bell">กระดิ่งแก้ว (Crystal Bell)</option>
+                        <option value="dingdong">ดิงดอง (Doorbell)</option>
+                        <option value="melodic">ท่วงทำนองอบอุ่น (Melodic Chord)</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          import('../../lib/tts').then(m => m.playChime(ttsChimeStyle))
+                        }}
+                      >
+                        🔊 ทดสอบเสียง
+                      </button>
+                    </div>
+                  )}
                   
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer', marginBottom: '8px' }}>
                     <input 

@@ -153,7 +153,8 @@ export default function QueueControlPage() {
           voiceGender: ttsVoiceGender,
           useEndingWord: ttsUseEnding,
           endingWord: ttsEndingWord,
-          playChime: ttsPlayChime
+          playChime: ttsPlayChime,
+          chimeStyle: ttsChimeStyle
         }
       })
 
@@ -184,7 +185,8 @@ export default function QueueControlPage() {
         voiceGender: ttsVoiceGender,
         useEndingWord: ttsUseEnding,
         endingWord: ttsEndingWord,
-        playChime: ttsPlayChime
+        playChime: ttsPlayChime,
+        chimeStyle: ttsChimeStyle
       }
     })
     toast.success('เรียกซ้ำแล้ว')
@@ -211,6 +213,7 @@ export default function QueueControlPage() {
   const ttsUseEnding = (event?.settings as any)?.tts_use_ending ?? true
   const ttsEndingWord = (event?.settings as any)?.tts_ending_word || 'ค่ะ'
   const ttsPlayChime = (event?.settings as any)?.tts_play_chime ?? true
+  const ttsChimeStyle = (event?.settings as any)?.tts_chime_style || 'classic'
 
   if (loading) {
     return <div className="loading-overlay"><div className="spinner spinner-lg" /></div>
@@ -397,7 +400,8 @@ export default function QueueControlPage() {
                               voiceGender: ttsVoiceGender,
                               useEndingWord: ttsUseEnding,
                               endingWord: ttsEndingWord,
-                              playChime: ttsPlayChime
+                              playChime: ttsPlayChime,
+                              chimeStyle: ttsChimeStyle
                             }
                           })
                         }
@@ -460,7 +464,8 @@ export default function QueueControlPage() {
                                   payload: {
                                     language: session.language, queueNumbers: [b.queue_number], names: [name],
                                     showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
-                                    playChime: ttsPlayChime
+                                    playChime: ttsPlayChime,
+                                    chimeStyle: ttsChimeStyle
                                   }
                                 })
                               }
@@ -497,7 +502,8 @@ export default function QueueControlPage() {
                             payload: {
                               language: session.language, queueNumbers: [b.queue_number], names: [name],
                               showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
-                              playChime: ttsPlayChime
+                              playChime: ttsPlayChime,
+                              chimeStyle: ttsChimeStyle
                             }
                           })
                         }
