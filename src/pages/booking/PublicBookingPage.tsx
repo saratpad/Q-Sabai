@@ -52,12 +52,19 @@ export default function PublicBookingPage() {
   }, [step, myBooking, ticketDownloaded])
 
   const handleCloseWindow = () => {
+    // Try standard close
     window.close()
-    // Fallback for some browsers that restrict window.close()
+    
+    // Check if the window is still open and perform fallback actions
     setTimeout(() => {
-      window.open('', '_self', '')
-      window.close()
-    }, 100)
+      // Direct browsers to a blank page
+      try {
+        window.location.href = "about:blank"
+      } catch (e) {
+        // As a last resort, alert user to close manually
+        alert("กรุณาปิดแท็บนี้ด้วยตนเอง")
+      }
+    }, 200)
   }
 
   const handleDownloadTicket = async () => {

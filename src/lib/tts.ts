@@ -13,9 +13,58 @@ export interface TTSOptions {
   voiceGender?: 'female' | 'male'
   useEndingWord?: boolean
   endingWord?: string
+  playChime?: boolean
 }
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
+
+export const playChime = (): Promise<void> => {
+  return new Promise((resolve) => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        resolve();
+        return;
+      }
+      const ctx = new AudioContextClass();
+      
+      // Chime note 1: E5
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+      gain1.gain.setValueAtTime(0, ctx.currentTime);
+      gain1.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      
+      // Chime note 2: G5 (delayed by 120ms)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(783.99, ctx.currentTime + 0.12); // G5
+      gain2.gain.setValueAtTime(0, ctx.currentTime + 0.12);
+      gain2.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.17);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.5);
+      osc2.start(ctx.currentTime + 0.12);
+      osc2.stop(ctx.currentTime + 0.65);
+      
+      setTimeout(() => {
+        ctx.close();
+        resolve();
+      }, 700);
+    } catch (e) {
+      console.error('AudioContext error:', e);
+      resolve();
+    }
+  });
+};
 
 export const speakQueue = async (options: TTSOptions): Promise<void> => {
   if (!window.speechSynthesis) {
@@ -26,6 +75,11 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
   let voices = window.speechSynthesis.getVoices()
   if (voices.length === 0) {
     voices = await loadVoices()
+  }
+
+  // Play chime if enabled
+  if (options.playChime !== false) {
+    await playChime().catch(err => console.error("Chime Error:", err))
   }
 
   return new Promise((resolve, reject) => {
@@ -71,7 +125,8 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = isThai ? 'th-TH' : 'en-US'
-    utterance.rate = 0.85
+    // 0.90 is clearer and more natural than 0.85
+    utterance.rate = 0.90
     utterance.pitch = 1.0
     utterance.volume = 1.0
 

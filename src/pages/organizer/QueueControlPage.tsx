@@ -152,7 +152,8 @@ export default function QueueControlPage() {
           phrase: ttsPhrase,
           voiceGender: ttsVoiceGender,
           useEndingWord: ttsUseEnding,
-          endingWord: ttsEndingWord
+          endingWord: ttsEndingWord,
+          playChime: ttsPlayChime
         }
       })
 
@@ -182,7 +183,8 @@ export default function QueueControlPage() {
         phrase: ttsPhrase,
         voiceGender: ttsVoiceGender,
         useEndingWord: ttsUseEnding,
-        endingWord: ttsEndingWord
+        endingWord: ttsEndingWord,
+        playChime: ttsPlayChime
       }
     })
     toast.success('เรียกซ้ำแล้ว')
@@ -208,6 +210,7 @@ export default function QueueControlPage() {
   const ttsVoiceGender = (event?.settings as any)?.tts_voice_gender || 'female'
   const ttsUseEnding = (event?.settings as any)?.tts_use_ending ?? true
   const ttsEndingWord = (event?.settings as any)?.tts_ending_word || 'ค่ะ'
+  const ttsPlayChime = (event?.settings as any)?.tts_play_chime ?? true
 
   if (loading) {
     return <div className="loading-overlay"><div className="spinner spinner-lg" /></div>
@@ -393,7 +396,8 @@ export default function QueueControlPage() {
                               phrase: ttsPhrase,
                               voiceGender: ttsVoiceGender,
                               useEndingWord: ttsUseEnding,
-                              endingWord: ttsEndingWord
+                              endingWord: ttsEndingWord,
+                              playChime: ttsPlayChime
                             }
                           })
                         }
@@ -455,7 +459,8 @@ export default function QueueControlPage() {
                                   event: 'TTS_PLAY',
                                   payload: {
                                     language: session.language, queueNumbers: [b.queue_number], names: [name],
-                                    showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord
+                                    showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
+                                    playChime: ttsPlayChime
                                   }
                                 })
                               }
@@ -491,7 +496,8 @@ export default function QueueControlPage() {
                             event: 'TTS_PLAY',
                             payload: {
                               language: session.language, queueNumbers: [b.queue_number], names: [name],
-                              showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord
+                              showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
+                              playChime: ttsPlayChime
                             }
                           })
                         }

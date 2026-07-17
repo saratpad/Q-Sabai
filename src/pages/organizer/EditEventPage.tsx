@@ -79,6 +79,7 @@ export default function EditEventPage() {
         setTtsVoiceGender((event.settings as any)?.tts_voice_gender || 'female')
         setTtsUseEnding((event.settings as any)?.tts_use_ending ?? true)
         setTtsEndingWord((event.settings as any)?.tts_ending_word || 'ค่ะ')
+        setTtsPlayChime((event.settings as any)?.tts_play_chime ?? true)
         setQueueType(event.queue_type as any)
         if (event.banner_url) {
           setBannerPreview(event.banner_url)
@@ -121,6 +122,7 @@ export default function EditEventPage() {
   const [ttsVoiceGender, setTtsVoiceGender] = useState<'female' | 'male'>('female')
   const [ttsUseEnding, setTtsUseEnding] = useState(true)
   const [ttsEndingWord, setTtsEndingWord] = useState('ค่ะ')
+  const [ttsPlayChime, setTtsPlayChime] = useState(true)
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled'>('unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [slots, setSlots] = useState<SlotInput[]>([
@@ -214,7 +216,8 @@ export default function EditEventPage() {
           tts_call_name: ttsCallName,
           tts_voice_gender: ttsVoiceGender,
           tts_use_ending: ttsUseEnding,
-          tts_ending_word: ttsEndingWord.trim()
+          tts_ending_word: ttsEndingWord.trim(),
+          tts_play_chime: ttsPlayChime
         },
       }
       if (bannerFile) {
@@ -422,6 +425,15 @@ export default function EditEventPage() {
                       <option value="male">เสียงผู้ชาย</option>
                     </select>
                   </div>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer', marginBottom: '8px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={ttsPlayChime} 
+                      onChange={e => setTtsPlayChime(e.target.checked)} 
+                    />
+                    เล่นเสียงเอฟเฟกต์ (ปิ๊งป่อง) ก่อนเรียกคิว
+                  </label>
                   
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', cursor: 'pointer', marginBottom: '8px' }}>
                     <input 
