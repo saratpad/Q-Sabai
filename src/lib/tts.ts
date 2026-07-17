@@ -69,111 +69,139 @@ export const playChime = async (style: ChimeStyle = 'classic'): Promise<void> =>
     try {
       const now = ctx.currentTime;
 
+      // Create a feedback delay line to simulate premium hospital reverb/echo
+      const delay = ctx.createDelay(1.0);
+      const feedback = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      delay.delayTime.setValueAtTime(0.25, now); // 250ms echo
+      feedback.gain.setValueAtTime(0.4, now); // moderate feedback
+      filter.frequency.setValueAtTime(1500, now); // soften high freq echoes
+
+      // Connect delay loop
+      delay.connect(filter);
+      filter.connect(feedback);
+      feedback.connect(delay);
+
+      // Connect delay to output
+      delay.connect(ctx.destination);
+
       if (style === 'bell') {
-        // High Crystal Bell
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1046.50, now); // C6
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.4, now + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.8);
+        // Echoing Hospital Bell (F6 -> C6 -> A5)
+        const notes = [1396.91, 1046.50, 880.00]; // F6, C6, A5
+        notes.forEach((freq, idx) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator(); // detuned second oscillator for fat chime
+          const gain = ctx.createGain();
+          const start = now + idx * 0.15;
 
-        const oscH = ctx.createOscillator();
-        const gainH = ctx.createGain();
-        oscH.type = 'sine';
-        oscH.frequency.setValueAtTime(1567.98, now); // G6
-        gainH.gain.setValueAtTime(0, now);
-        gainH.gain.linearRampToValueAtTime(0.15, now + 0.02);
-        gainH.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-        oscH.connect(gainH);
-        gainH.connect(ctx.destination);
-        oscH.start(now);
-        oscH.stop(now + 0.5);
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(freq, start);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(freq + 4, start); // slightly detuned
 
-        setTimeout(() => resolve(), 850);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.25, start + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.2);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay); // send to echo chamber
+
+          osc1.start(start);
+          osc1.stop(start + 1.3);
+          osc2.start(start);
+          osc2.stop(start + 1.3);
+        });
+
+        setTimeout(() => resolve(), 1800);
 
       } else if (style === 'dingdong') {
-        // Ding Dong Doorbell
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'triangle';
-        osc1.frequency.setValueAtTime(523.25, now); // C5 (Ding)
-        gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.25, now + 0.05);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
+        // Department Store/Hospital Ding Dong (F5 -> D5) with rich texture
+        const freqs = [698.46, 587.33]; // F5, D5
+        freqs.forEach((freq, idx) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const start = now + idx * 0.35;
 
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(392.00, now + 0.3); // G4 (Dong)
-        gain2.gain.setValueAtTime(0, now + 0.3);
-        gain2.gain.linearRampToValueAtTime(0.25, now + 0.35);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(freq, start);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(freq * 1.5, start); // perfect 5th overtone
 
-        osc1.start(now);
-        osc1.stop(now + 0.5);
-        osc2.start(now + 0.3);
-        osc2.stop(now + 0.9);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.2, start + 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.5);
 
-        setTimeout(() => resolve(), 950);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay);
+
+          osc1.start(start);
+          osc1.stop(start + 1.6);
+          osc2.start(start);
+          osc2.stop(start + 1.6);
+        });
+
+        setTimeout(() => resolve(), 2200);
 
       } else if (style === 'melodic') {
-        // Cascading melody chord C-E-G-C
+        // Echoing Melodic Arpeggio (C5 -> E5 -> G5 -> C6)
         const notes = [523.25, 659.25, 783.99, 1046.50];
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
-          const startOffset = idx * 0.1;
+          const start = now + idx * 0.12;
+
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, now + startOffset);
-          gain.gain.setValueAtTime(0, now + startOffset);
-          gain.gain.linearRampToValueAtTime(0.2, now + startOffset + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.005, now + startOffset + 0.5);
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.18, start + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.0);
+
           osc.connect(gain);
           gain.connect(ctx.destination);
-          osc.start(now + startOffset);
-          osc.stop(now + startOffset + 0.5);
+          gain.connect(delay);
+
+          osc.start(start);
+          osc.stop(start + 1.1);
         });
 
-        setTimeout(() => resolve(), 1000);
+        setTimeout(() => resolve(), 1800);
 
       } else {
-        // Classic (E5 -> G5)
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(659.25, now);
-        gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.3, now + 0.05);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
+        // Classic Hospital/Airport Chime (E5 -> G5 -> C6)
+        const notes = [659.25, 783.99, 1046.50]; // E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const start = now + idx * 0.14;
 
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(783.99, now + 0.12);
-        gain2.gain.setValueAtTime(0, now + 0.12);
-        gain2.gain.linearRampToValueAtTime(0.3, now + 0.17);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(freq, start);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(freq + 3, start); // rich detuning
 
-        osc1.start(now);
-        osc1.stop(now + 0.5);
-        osc2.start(now + 0.12);
-        osc2.stop(now + 0.65);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.22, start + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.2);
 
-        setTimeout(() => resolve(), 750);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          gain.connect(delay); // connect to echoing delay
+
+          osc1.start(start);
+          osc1.stop(start + 1.3);
+          osc2.start(start);
+          osc2.stop(start + 1.3);
+        });
+
+        setTimeout(() => resolve(), 1800);
       }
     } catch (e) {
       console.error('Chime error:', e);
