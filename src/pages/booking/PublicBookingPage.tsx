@@ -52,6 +52,9 @@ export default function PublicBookingPage() {
   }, [step, myBooking, ticketDownloaded])
 
   const handleCloseWindow = () => {
+    if (eventId) {
+      localStorage.removeItem('booking_' + eventId)
+    }
     // Try standard close
     window.close()
     
@@ -539,7 +542,12 @@ export default function PublicBookingPage() {
               ✕ ปิดหน้าต่าง
             </button>
             {event.parent_id && (
-              <button className="btn btn-ghost btn-sm" onClick={() => window.location.href = `/book/${event.parent_id}`} style={{ border: '1px solid var(--color-border)' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => {
+                if (eventId) {
+                  localStorage.removeItem('booking_' + eventId)
+                }
+                window.location.href = `/book/${event.parent_id}`
+              }} style={{ border: '1px solid var(--color-border)' }}>
                 ✕ เลือกกิจกรรมอื่น
               </button>
             )}

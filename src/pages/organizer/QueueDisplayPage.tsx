@@ -210,6 +210,29 @@ export default function QueueDisplayPage() {
     })
   }
 
+  const [audioEnabled, setAudioEnabled] = useState(false)
+
+  const enableAudio = async () => {
+    setAudioEnabled(true)
+    // Unlock Web Audio Context
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        gain.gain.setValueAtTime(0, ctx.currentTime) // silent
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(0)
+        osc.stop(0.1)
+        setTimeout(() => ctx.close(), 150)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const getNameForBooking = (eventId: string, booking: BookingDisplay) => {
     const responses = booking.field_responses || {}
     const fields = customFields[eventId] || []
@@ -222,6 +245,24 @@ export default function QueueDisplayPage() {
     return (
       <div className="queue-display">
         <div className="spinner spinner-lg" style={{ borderTopColor: '#0ea5e9' }} />
+      </div>
+    )
+  }
+
+  // Audio activation overlay (Autoplay Policy resolution)
+  if (!audioEnabled) {
+    return (
+      <div className="queue-display" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', color: '#fff', cursor: 'pointer' }} onClick={enableAudio}>
+        <div style={{ padding: '40px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center', maxWidth: '480px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📢</div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '12px' }}>คลิกเพื่อเปิดระบบเรียกคิว</h2>
+          <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: 1.5, marginBottom: '24px' }}>
+            เพื่อปฏิบัติตามนโยบายความปลอดภัยของเบราว์เซอร์ กรุณาคลิกหนึ่งครั้งเพื่อเปิดใช้งานเสียงเรียกและเสียงเอฟเฟกต์นำ
+          </p>
+          <button className="btn btn-primary" style={{ padding: '12px 32px', fontSize: '1.1rem', width: '100%' }}>
+            🔊 เริ่มเปิดใช้งานเสียง
+          </button>
+        </div>
       </div>
     )
   }
