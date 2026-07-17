@@ -51,15 +51,25 @@ export default function PublicBookingPage() {
     }
   }, [step, myBooking, ticketDownloaded])
 
+  const handleCloseWindow = () => {
+    window.close()
+    // Fallback for some browsers that restrict window.close()
+    setTimeout(() => {
+      window.open('', '_self', '')
+      window.close()
+    }, 100)
+  }
+
   const handleDownloadTicket = async () => {
-    if (!ticketRef.current) return
+    if (!ticketRef.current || !event) return
     try {
       const canvas = await html2canvas(ticketRef.current, { backgroundColor: '#111827', scale: 2 })
       const url = canvas.toDataURL('image/png')
       setTicketImageUrl(url)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Ticket-Q-Sabai-${myBooking?.queue_number}.png`
+      const sanitizedTitle = event.title.replace(/[^a-zA-Z0-9ก-๙]/g, '_')
+      a.download = `Ticket-${sanitizedTitle}-Q${myBooking?.queue_number}-${Date.now().toString().slice(-6)}.png`
       a.click()
       toast.success('ดาวน์โหลดตั๋วคิวเรียบร้อย')
     } catch (err) {
@@ -518,12 +528,12 @@ export default function PublicBookingPage() {
             กรุณารอฟังเรียกหมายเลขคิวของคุณ <br /> (หากไม่ได้ภาพตั๋ว สามารถกดค้างที่รูปภาพเพื่อบันทึกได้)
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary btn-sm" onClick={handleDownloadTicket}>
-              ⬇️ ดาวน์โหลดตั๋ว
+            <button className="btn btn-danger btn-sm" onClick={handleCloseWindow}>
+              ✕ ปิดหน้าต่าง
             </button>
             {event.parent_id && (
               <button className="btn btn-ghost btn-sm" onClick={() => window.location.href = `/book/${event.parent_id}`} style={{ border: '1px solid var(--color-border)' }}>
-                ✕ ปิดหน้าต่าง (เลือกกิจกรรมอื่น)
+                ✕ เลือกกิจกรรมอื่น
               </button>
             )}
           </div>
