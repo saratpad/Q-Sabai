@@ -1,6 +1,6 @@
 /**
  * Thai Text-to-Speech for queue announcements
- * Uses Web Speech API
+ * Uses Web Speech API + Web Audio API for chimes
  */
 
 export interface TTSOptions {
@@ -21,17 +21,54 @@ let currentUtterance: SpeechSynthesisUtterance | null = null
 
 export type ChimeStyle = 'classic' | 'bell' | 'dingdong' | 'melodic';
 
-export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
+// ── Shared AudioContext singleton ──────────────────────────────────────────
+// Creating a new AudioContext every call causes "suspended" state because
+// the browser requires a user-gesture for EACH new context.
+// By reusing one context we only need one unlock click.
+let _sharedAudioCtx: AudioContext | null = null;
+
+const getAudioContext = async (): Promise<AudioContext | null> => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+      _sharedAudioCtx = new AudioContextClass();
+    }
+    if (_sharedAudioCtx.state === 'suspended') {
+      await _sharedAudioCtx.resume();
+    }
+    return _sharedAudioCtx;
+  } catch (e) {
+    console.error('AudioContext error:', e);
+    return null;
+  }
+};
+
+/**
+ * Call this once inside a click handler to unlock the shared AudioContext.
+ * After this, playChime() will work without requiring another user gesture.
+ */
+export const unlockAudioContext = async (): Promise<void> => {
+  const ctx = await getAudioContext();
+  if (ctx) {
+    // Play a silent 1-sample buffer to fully unlock audio on iOS/Chrome
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  }
+};
+
+// ── Chime sounds ───────────────────────────────────────────────────────────
+export const playChime = async (style: ChimeStyle = 'classic'): Promise<void> => {
+  const ctx = await getAudioContext();
+  if (!ctx) return;
+
   return new Promise((resolve) => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        resolve();
-        return;
-      }
-      const ctx = new AudioContextClass();
       const now = ctx.currentTime;
-      
+
       if (style === 'bell') {
         // High Crystal Bell
         const osc = ctx.createOscillator();
@@ -46,7 +83,6 @@ export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
         osc.start(now);
         osc.stop(now + 0.8);
 
-        // Bell Harmonic
         const oscH = ctx.createOscillator();
         const gainH = ctx.createGain();
         oscH.type = 'sine';
@@ -59,10 +95,8 @@ export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
         oscH.start(now);
         oscH.stop(now + 0.5);
 
-        setTimeout(() => {
-          ctx.close();
-          resolve();
-        }, 850);
+        setTimeout(() => resolve(), 850);
+
       } else if (style === 'dingdong') {
         // Ding Dong Doorbell
         const osc1 = ctx.createOscillator();
@@ -90,13 +124,11 @@ export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
         osc2.start(now + 0.3);
         osc2.stop(now + 0.9);
 
-        setTimeout(() => {
-          ctx.close();
-          resolve();
-        }, 950);
+        setTimeout(() => resolve(), 950);
+
       } else if (style === 'melodic') {
         // Cascading melody chord C-E-G-C
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        const notes = [523.25, 659.25, 783.99, 1046.50];
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -112,10 +144,8 @@ export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
           osc.stop(now + startOffset + 0.5);
         });
 
-        setTimeout(() => {
-          ctx.close();
-          resolve();
-        }, 1000);
+        setTimeout(() => resolve(), 1000);
+
       } else {
         // Classic (E5 -> G5)
         const osc1 = ctx.createOscillator();
@@ -143,37 +173,31 @@ export const playChime = (style: ChimeStyle = 'classic'): Promise<void> => {
         osc2.start(now + 0.12);
         osc2.stop(now + 0.65);
 
-        setTimeout(() => {
-          ctx.close();
-          resolve();
-        }, 750);
+        setTimeout(() => resolve(), 750);
       }
     } catch (e) {
-      console.error('AudioContext error:', e);
+      console.error('Chime error:', e);
       resolve();
     }
   });
 };
 
+// ── TTS (Speech) ───────────────────────────────────────────────────────────
 export const speakQueue = async (options: TTSOptions): Promise<void> => {
   if (!window.speechSynthesis) {
     return Promise.reject(new Error('Speech synthesis not supported'))
   }
 
-  // Ensure voices are fully loaded before proceeding
   let voices = window.speechSynthesis.getVoices()
   if (voices.length === 0) {
     voices = await loadVoices()
   }
 
-  // Play chime if enabled
   if (options.playChime !== false) {
     await playChime(options.chimeStyle || 'classic').catch(err => console.error("Chime Error:", err))
   }
 
   return new Promise((resolve, reject) => {
-
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel()
 
     const { language, queueNumbers, prefix, names, showName, phrase, voiceGender = 'female', useEndingWord = true, endingWord = 'ค่ะ' } = options
@@ -182,8 +206,7 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
     let text = ''
     const p = prefix ? `${prefix}` : ''
     const callPhrase = phrase || (isThai ? 'ขอเชิญหมายเลข' : 'Please welcome number')
-    
-    // Fallback for ending word based on gender if none provided
+
     const defaultEnding = voiceGender === 'male' ? 'ครับ' : 'ค่ะ'
     const finalEnding = useEndingWord ? (endingWord || defaultEnding) : ''
     const endingText = finalEnding ? ` ${finalEnding}` : ''
@@ -214,24 +237,21 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = isThai ? 'th-TH' : 'en-US'
-    // 0.90 is clearer and more natural than 0.85
     utterance.rate = 0.90
     utterance.pitch = 1.0
     utterance.volume = 1.0
 
-    // Helper to score voices
     const getVoiceScore = (v: SpeechSynthesisVoice) => {
       let score = 0
       const lang = v.lang.toLowerCase()
       if (isThai && lang.startsWith('th')) score += 10
       if (!isThai && lang.startsWith('en')) score += 10
-      if (v.default) score += 2 // Prefer default system voices if no other clues
+      if (v.default) score += 2
 
-      // Search both name and voiceURI for gender hints
       const name = (v.name + ' ' + v.voiceURI).toLowerCase()
       const isFemaleName = name.includes('female') || name.includes('woman') || name.includes('girl') || name.includes('premwadee') || name.includes('kanya') || name.includes('narisa') || name.includes('samantha') || name.includes('-f')
       const isMaleName = (name.includes('male') && !name.includes('female')) || name.includes('man') || name.includes('boy') || name.includes('pattara') || name.includes('niwat') || name.includes('-m')
-      
+
       if (voiceGender === 'male') {
         if (isMaleName) score += 5
         if (isFemaleName) score -= 5
@@ -239,12 +259,12 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
         if (isFemaleName) score += 5
         if (isMaleName) score -= 5
       }
-      
+
       return score
     }
 
     const bestVoice = [...voices].sort((a, b) => getVoiceScore(b) - getVoiceScore(a))[0]
-    
+
     if (bestVoice && getVoiceScore(bestVoice) > 0) {
       utterance.voice = bestVoice
     }
@@ -262,7 +282,6 @@ export const stopSpeech = () => {
   currentUtterance = null
 }
 
-// Preload voices (required in some browsers)
 export const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   return new Promise((resolve) => {
     const voices = window.speechSynthesis.getVoices()
@@ -277,7 +296,6 @@ export const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
         }
       }
       window.speechSynthesis.onvoiceschanged = handleVoices
-      // Fallback timeout to resolve anyway
       setTimeout(handleVoices, 1000)
     }
   })

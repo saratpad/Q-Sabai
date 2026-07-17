@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { QueueSession, Booking, Event, CustomField } from '../../lib/database.types'
-import { speakQueue, loadVoices } from '../../lib/tts'
+import { speakQueue, loadVoices, unlockAudioContext } from '../../lib/tts'
 import { useSystemStore } from '../../stores/systemStore'
 import './QueueDisplayPage.css'
 
@@ -214,23 +214,7 @@ export default function QueueDisplayPage() {
 
   const enableAudio = async () => {
     setAudioEnabled(true)
-    // Unlock Web Audio Context
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-      if (AudioContextClass) {
-        const ctx = new AudioContextClass()
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        gain.gain.setValueAtTime(0, ctx.currentTime) // silent
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(0)
-        osc.stop(0.1)
-        setTimeout(() => ctx.close(), 150)
-      }
-    } catch (e) {
-      console.error(e)
-    }
+    await unlockAudioContext()
   }
 
   const getNameForBooking = (eventId: string, booking: BookingDisplay) => {

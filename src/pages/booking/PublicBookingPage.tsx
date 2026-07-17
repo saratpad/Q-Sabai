@@ -117,16 +117,20 @@ export default function PublicBookingPage() {
         setFieldValues(init)
       }
 
-      // Removed logged-in user booking check since it's anonymous
-      // If we want to persist across reload we could check localStorage, 
-      // but the requirement is to use phone number search to find booking.
-      const localBookingId = localStorage.getItem('booking_' + eventId)
-      if (localBookingId) {
-        const { data } = await supabase.from('bookings').select('*').eq('id', localBookingId).maybeSingle()
-        if (data && data.status !== 'cancelled') {
-          setMyBooking(data)
-          setStep('done')
+      // Restore from localStorage unless allow_duplicate is enabled
+      const allowDuplicate = (eventRes.data?.settings as any)?.allow_duplicate ?? false
+      if (!allowDuplicate) {
+        const localBookingId = localStorage.getItem('booking_' + eventId)
+        if (localBookingId) {
+          const { data } = await supabase.from('bookings').select('*').eq('id', localBookingId).maybeSingle()
+          if (data && data.status !== 'cancelled') {
+            setMyBooking(data)
+            setStep('done')
+          }
         }
+      } else {
+        // allow_duplicate: always clear old token so user gets fresh form
+        localStorage.removeItem('booking_' + eventId)
       }
     } finally {
       setLoading(false)
