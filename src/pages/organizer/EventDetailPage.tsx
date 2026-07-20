@@ -33,8 +33,11 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('bookings')
   const [bookingSearch, setBookingSearch] = useState('')
+  const [bookingPage, setBookingPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [editingEvent, setEditingEvent] = useState(false)
   const [childEvents, setChildEvents] = useState<Event[]>([])
+  const [updatingChildStatus, setUpdatingChildStatus] = useState<string | null>(null)
   // Inline edit for group overview
   const [editGroupTitle, setEditGroupTitle] = useState('')
   const [editGroupDesc, setEditGroupDesc] = useState('')
@@ -279,7 +282,20 @@ export default function EventDetailPage() {
               onChange={async e => {
                 const status = e.target.value as Event['status']
                 const { error } = await supabase.from('events').update({ status }).eq('id', event.id)
-                if (!error) { setEvent(prev => prev ? { ...prev, status } : prev); toast.success('อัปเดตสถานะแล้ว') }
+                if (!error) {
+                  setEvent(prev => prev ? { ...prev, status } : prev)
+                  // ถ้าเป็นกิจกรรมหลัก ให้ซิงค์สถานะกิจกรรมย่อยทั้งหมด
+                  if (event.is_group && childEvents.length > 0) {
+                    const { error: childError } = await supabase
+                      .from('events')
+                      .update({ status })
+                      .eq('parent_id', event.id)
+                    if (!childError) {
+                      setChildEvents(prev => prev.map(c => ({ ...c, status })))
+                    }
+                  }
+                  toast.success('อัปเดตสถานะแล้ว')
+                }
               }}
             >
               <option value="active">เปิด</option>
@@ -420,7 +436,7 @@ export default function EventDetailPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {childEvents.map(child => (
-                <div key={child.id} className="glass-card" style={{ padding: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={child.id} className="glass-card" style={{ padding: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
                     {child.banner_url ? (
                       <img src={child.banner_url} alt={child.title} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px' }} />
@@ -431,10 +447,51 @@ export default function EventDetailPage() {
                     )}
                     <div>
                       <h4 style={{ margin: '0 0 4px 0' }}>{child.title}</h4>
-                      <span className="badge badge-active">คิว: {(child.settings as any)?.queue_prefix || ''}XXX</span>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className="badge badge-active">คิว: {(child.settings as any)?.queue_prefix || ''}XXX</span>
+                        {child.status === 'active' && <span className="badge badge-active">● เปิด</span>}
+                        {child.status === 'paused' && <span className="badge badge-paused">⏸ หยุด</span>}
+                        {child.status === 'closed' && <span className="badge badge-closed">✕ ปิด</span>}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* ตั้งสถานะกิจกรรมย่อย: ทำได้เฉพาะเมื่อ parent เป็น active */}
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        className="form-input form-select"
+                        value={child.status}
+                        disabled={event.status !== 'active' || updatingChildStatus === child.id}
+                        title={event.status !== 'active' ? 'ต้องเปิดกิจกรรมหลักก่อนจึงจะตั้งสถานะย่อยได้' : ''}
+                        style={{
+                          width: 'auto',
+                          padding: '6px 28px 6px 10px',
+                          fontSize: '0.8125rem',
+                          opacity: event.status !== 'active' ? 0.5 : 1,
+                          cursor: event.status !== 'active' ? 'not-allowed' : 'pointer',
+                        }}
+                        onChange={async e => {
+                          if (event.status !== 'active') return
+                          const newStatus = e.target.value as Event['status']
+                          setUpdatingChildStatus(child.id)
+                          const { error } = await supabase
+                            .from('events')
+                            .update({ status: newStatus })
+                            .eq('id', child.id)
+                          if (!error) {
+                            setChildEvents(prev => prev.map(c => c.id === child.id ? { ...c, status: newStatus } : c))
+                            toast.success(`อัปเดตสถานะ "${child.title}" แล้ว`)
+                          } else {
+                            toast.error('เกิดข้อผิดพลาด')
+                          }
+                          setUpdatingChildStatus(null)
+                        }}
+                      >
+                        <option value="active">เปิด</option>
+                        <option value="paused">หยุด</option>
+                        <option value="closed">ปิด</option>
+                      </select>
+                    </div>
                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/organizer/events/${child.id}`)}>
                       ⚙️ จัดการ
                     </button>
@@ -450,100 +507,156 @@ export default function EventDetailPage() {
       )}
 
       {/* Tab: Bookings */}
-      {activeTab === 'bookings' && !event.is_group && (
-        <div className="tab-content fade-in">
-          <div className="bookings-toolbar">
-            <input
-              className="form-input"
-              placeholder="🔍 ค้นหาชื่อ, หมายเลขคิว..."
-              value={bookingSearch}
-              onChange={e => setBookingSearch(e.target.value)}
-              style={{ maxWidth: '300px' }}
-            />
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <button
-                className="btn btn-success btn-sm"
-                onClick={() => exportToExcel({ event, bookings: bookings as BookingWithProfile[], customFields })}
-              >
-                📊 Excel
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => exportToGoogleSheets({ event, bookings: bookings as BookingWithProfile[], customFields })}
-              >
-                📋 Sheets
-              </button>
-              <button className="btn btn-danger btn-sm" onClick={handleClearDatabase}>
-                🗑️ ล้างข้อมูล
-              </button>
-            </div>
-          </div>
+      {activeTab === 'bookings' && !event.is_group && (() => {
+        const totalPages = Math.ceil(filteredBookings.length / pageSize) || 1
+        const currentPage = Math.min(bookingPage, totalPages)
+        const paginatedBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-          {filteredBookings.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📭</div>
-              <div className="empty-state-title">ยังไม่มีการจอง</div>
+        return (
+          <div className="tab-content fade-in">
+            <div className="bookings-toolbar" style={{ flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  className="form-input"
+                  placeholder="🔍 ค้นหาชื่อ, หมายเลขคิว..."
+                  value={bookingSearch}
+                  onChange={e => {
+                    setBookingSearch(e.target.value)
+                    setBookingPage(1)
+                  }}
+                  style={{ maxWidth: '260px' }}
+                />
+                <select
+                  className="form-input form-select"
+                  value={pageSize}
+                  onChange={e => {
+                    setPageSize(Number(e.target.value))
+                    setBookingPage(1)
+                  }}
+                  style={{ width: 'auto', padding: '6px 28px 6px 10px', fontSize: '0.8125rem' }}
+                >
+                  <option value={25}>25 รายการ/หน้า</option>
+                  <option value={50}>50 รายการ/หน้า</option>
+                  <option value={100}>100 รายการ/หน้า</option>
+                  <option value={500}>500 รายการ/หน้า</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <button
+                  className="btn btn-success btn-sm"
+                  onClick={() => exportToExcel({ event, bookings: bookings as BookingWithProfile[], customFields })}
+                >
+                  📊 Excel
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => exportToGoogleSheets({ event, bookings: bookings as BookingWithProfile[], customFields })}
+                >
+                  📋 Sheets
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={handleClearDatabase}>
+                  🗑️ ล้างข้อมูล
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>หมายเลขคิว</th>
-                    {customFields.map(f => <th key={f.id}>{f.label}</th>)}
-                    {event.queue_type === 'scheduled' && <th>รอบเวลา</th>}
-                    <th>วันที่จอง</th>
-                    <th>สถานะ</th>
-                    <th>จัดการ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBookings.map(booking => {
-                    const responses = (booking.field_responses || {}) as Record<string, string>
-                    return (
-                      <tr key={booking.id}>
-                        <td>
-                          <span className="queue-num-badge">#{booking.queue_number}</span>
-                        </td>
-                        {customFields.map(f => (
-                          <td key={f.id}>{responses[f.id] || '-'}</td>
-                        ))}
-                        {event.queue_type === 'scheduled' && (
-                          <td>
-                            {booking.event_slots 
-                              ? `${booking.event_slots.start_time.slice(0, 5)} - ${booking.event_slots.end_time.slice(0, 5)}`
-                              : '-'}
-                          </td>
-                        )}
-                        <td>{format(new Date(booking.created_at), 'dd/MM/yy HH:mm', { locale: th })}</td>
-                        <td>
-                          <span className={`badge badge-${booking.status}`}>
-                            {STATUS_LABELS[booking.status]}
-                          </span>
-                        </td>
-                        <td>
-                          <select
-                            className="form-input form-select"
-                            value={booking.status}
-                            style={{ padding: '3px 24px 3px 8px', fontSize: '0.8125rem', width: 'auto' }}
-                            onChange={e => handleBookingStatusChange(booking.id, e.target.value as Booking['status'])}
-                          >
-                            <option value="waiting">รอเรียก</option>
-                            <option value="called">เรียกแล้ว</option>
-                            <option value="present">มาแล้ว</option>
-                            <option value="absent">ไม่มา</option>
-                            <option value="cancelled">ยกเลิก</option>
-                          </select>
-                        </td>
+
+            {filteredBookings.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📭</div>
+                <div className="empty-state-title">ยังไม่มีการจอง</div>
+              </div>
+            ) : (
+              <>
+                <div className="table-wrapper">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>หมายเลขคิว</th>
+                        {customFields.map(f => <th key={f.id}>{f.label}</th>)}
+                        {event.queue_type === 'scheduled' && <th>รอบเวลา</th>}
+                        <th>วันที่จอง</th>
+                        <th>สถานะ</th>
+                        <th>จัดการ</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                    </thead>
+                    <tbody>
+                      {paginatedBookings.map(booking => {
+                        const responses = (booking.field_responses || {}) as Record<string, string>
+                        return (
+                          <tr key={booking.id}>
+                            <td>
+                              <span className="queue-num-badge">#{booking.queue_number}</span>
+                            </td>
+                            {customFields.map(f => (
+                              <td key={f.id}>{responses[f.id] || '-'}</td>
+                            ))}
+                            {event.queue_type === 'scheduled' && (
+                              <td>
+                                {booking.event_slots 
+                                  ? `${booking.event_slots.start_time.slice(0, 5)} - ${booking.event_slots.end_time.slice(0, 5)}`
+                                  : '-'}
+                              </td>
+                            )}
+                            <td>{format(new Date(booking.created_at), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                            <td>
+                              <span className={`badge badge-${booking.status}`}>
+                                {STATUS_LABELS[booking.status]}
+                              </span>
+                            </td>
+                            <td>
+                              <select
+                                className="form-input form-select"
+                                value={booking.status}
+                                style={{ padding: '3px 24px 3px 8px', fontSize: '0.8125rem', width: 'auto' }}
+                                onChange={e => handleBookingStatusChange(booking.id, e.target.value as Booking['status'])}
+                              >
+                                <option value="waiting">รอเรียก</option>
+                                <option value="called">เรียกแล้ว</option>
+                                <option value="present">มาแล้ว</option>
+                                <option value="absent">ไม่มา</option>
+                                <option value="cancelled">ยกเลิก</option>
+                              </select>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination bar */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-4)', padding: '0 var(--space-2)', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                      แสดง {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredBookings.length)} จากทั้งหมด {filteredBookings.length} รายการ
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => setBookingPage(p => Math.max(p - 1, 1))}
+                      >
+                        ◀ ก่อนหน้า
+                      </button>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, padding: '0 8px' }}>
+                        หน้า {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setBookingPage(p => Math.min(p + 1, totalPages))}
+                      >
+                        ถัดไป ▶
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Tab: QR / Link */}
       {activeTab === 'qr' && (

@@ -21,6 +21,7 @@ export default function QueueControlPage() {
   const [slots, setSlots] = useState<EventSlot[]>([])
   const [calling, setCalling] = useState(false)
   const [unlockedSlotId, setUnlockedSlotId] = useState<string | null>(null)
+  const [waitingSearch, setWaitingSearch] = useState('')
 
   const fetchBookings = async () => {
     if (!eventId) return
@@ -415,8 +416,18 @@ export default function QueueControlPage() {
 
           {/* Waiting */}
           <div className="queue-list-section">
-            <div className="queue-list-header">
-              รอรับบริการ ({waitingBookings.length})
+            <div className="queue-list-header" style={{ flexWrap: 'wrap', gap: '8px' }}>
+              <span>รอรับบริการ ({waitingBookings.length})</span>
+              {waitingBookings.length > 5 && (
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="🔍 ค้นชื่อ / หมายเลข..."
+                  value={waitingSearch}
+                  onChange={e => setWaitingSearch(e.target.value)}
+                  style={{ padding: '4px 10px', fontSize: '0.8125rem', width: '160px' }}
+                />
+              )}
             </div>
             {waitingBookings.length === 0 ? (
               <div className="empty-state" style={{ padding: 'var(--space-6)' }}>
@@ -424,98 +435,115 @@ export default function QueueControlPage() {
                 <div className="empty-state-title">เรียกคิวครบแล้ว!</div>
               </div>
             ) : event?.queue_type === 'scheduled' ? (
-              slots.map(slot => {
-                const slotBookings = waitingBookings.filter(b => b.slot_id === slot.id)
-                if (slotBookings.length === 0) return null
-                return (
-                  <div key={slot.id} className="queue-slot-group" style={{ marginBottom: 'var(--space-4)' }}>
-                    <div className="queue-slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
-                      <span>รอบ {slot.start_time.slice(0,5)} - {slot.end_time.slice(0,5)} ({slotBookings.length} คิว)</span>
-                      {unlockedSlotId !== slot.id ? (
-                        <button className="btn btn-primary btn-sm" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setUnlockedSlotId(slot.id)}>
-                          เริ่มรอบนี้
-                        </button>
-                      ) : (
-                        <span style={{ color: 'var(--color-success)', fontSize: '0.7rem' }}>✅ กำลังเรียก</span>
-                      )}
-                    </div>
-                    {slotBookings.map(b => {
-                      const name = getNameForBooking(b)
-                      const isLocked = unlockedSlotId !== slot.id
-                      return (
-                        <div key={b.id} className="queue-item">
-                          <span className="queue-item-num">#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
-                          {name && <span className="queue-item-name">{name}</span>}
-                          <button className="btn btn-ghost btn-sm" disabled={isLocked} onClick={async () => {
-                            if (isLocked) return
-                            const { error } = await supabase
-                              .from('queue_sessions')
-                              .update({ current_numbers: [b.queue_number] })
-                              .eq('event_id', eventId)
-                            if (!error) {
-                              await supabase.from('bookings').update({ status: 'called', called_at: new Date().toISOString() }).eq('id', b.id)
-                              setSession(prev => prev ? { ...prev, current_numbers: [b.queue_number] } : prev)
-                              setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'called' as Booking['status'] } : x))
-                              toast.success(`เรียก #${prefix}${b.queue_number} แล้ว`)
-                              if (session) {
-                                supabase.channel(`queue:${eventId}`).send({
-                                  type: 'broadcast',
-                                  event: 'TTS_PLAY',
-                                  payload: {
-                                    language: session.language, queueNumbers: [b.queue_number], names: [name],
-                                    showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
-                                    playChime: ttsPlayChime,
-                                    chimeStyle: ttsChimeStyle
-                                  }
-                                })
+              <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
+                {slots.map(slot => {
+                  const slotBookings = waitingBookings
+                    .filter(b => b.slot_id === slot.id)
+                    .filter(b => {
+                      if (!waitingSearch) return true
+                      const q = waitingSearch.toLowerCase()
+                      const name = getNameForBooking(b).toLowerCase()
+                      const numStr = b.queue_number.toString()
+                      const formattedNum = `${prefix}${String(b.queue_number).padStart(3, '0')}`.toLowerCase()
+                      return name.includes(q) || numStr.includes(q) || formattedNum.includes(q)
+                    })
+                  if (slotBookings.length === 0) return null
+                  return (
+                    <div key={slot.id} className="queue-slot-group" style={{ marginBottom: 'var(--space-4)' }}>
+                      <div className="queue-slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+                        <span>รอบ {slot.start_time.slice(0,5)} - {slot.end_time.slice(0,5)} ({slotBookings.length} คิว)</span>
+                        {unlockedSlotId !== slot.id ? (
+                          <button className="btn btn-primary btn-sm" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setUnlockedSlotId(slot.id)}>
+                            เริ่มรอบนี้
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--color-success)', fontSize: '0.7rem' }}>✅ กำลังเรียก</span>
+                        )}
+                      </div>
+                      {slotBookings.map(b => {
+                        const name = getNameForBooking(b)
+                        const isLocked = unlockedSlotId !== slot.id
+                        return (
+                          <div key={b.id} className="queue-item">
+                            <span className="queue-item-num">#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
+                            {name && <span className="queue-item-name">{name}</span>}
+                            <button className="btn btn-ghost btn-sm" disabled={isLocked} onClick={async () => {
+                              if (isLocked) return
+                              const { error } = await supabase
+                                .from('queue_sessions')
+                                .update({ current_numbers: [b.queue_number] })
+                                .eq('event_id', eventId)
+                              if (!error) {
+                                await supabase.from('bookings').update({ status: 'called', called_at: new Date().toISOString() }).eq('id', b.id)
+                                setSession(prev => prev ? { ...prev, current_numbers: [b.queue_number] } : prev)
+                                setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'called' as Booking['status'] } : x))
+                                toast.success(`เรียก #${prefix}${b.queue_number} แล้ว`)
+                                if (session) {
+                                  supabase.channel(`queue:${eventId}`).send({
+                                    type: 'broadcast',
+                                    event: 'TTS_PLAY',
+                                    payload: {
+                                      language: session.language, queueNumbers: [b.queue_number], names: [name],
+                                      showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
+                                      playChime: ttsPlayChime,
+                                      chimeStyle: ttsChimeStyle
+                                    }
+                                  })
+                                }
                               }
-                            }
-                          }}>เรียก</button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })
+                            }}>เรียก</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
             ) : (
-              waitingBookings.slice(0, 20).map(b => {
-                const name = getNameForBooking(b)
-                return (
-                  <div key={b.id} className="queue-item">
-                    <span className="queue-item-num">#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
-                    {name && <span className="queue-item-name">{name}</span>}
-                    <button className="btn btn-ghost btn-sm" onClick={async () => {
-                      // Add this specific person to front
-                      const { error } = await supabase
-                        .from('queue_sessions')
-                        .update({ current_numbers: [b.queue_number] })
-                        .eq('event_id', eventId)
-                      if (!error) {
-                        await supabase.from('bookings').update({ status: 'called', called_at: new Date().toISOString() }).eq('id', b.id)
-                        setSession(prev => prev ? { ...prev, current_numbers: [b.queue_number] } : prev)
-                        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'called' as Booking['status'] } : x))
-                        toast.success(`เรียก #${prefix}${b.queue_number} แล้ว`)
-                        if (session) {
-                          supabase.channel(`queue:${eventId}`).send({
-                            type: 'broadcast',
-                            event: 'TTS_PLAY',
-                            payload: {
-                              language: session.language, queueNumbers: [b.queue_number], names: [name],
-                              showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
-                              playChime: ttsPlayChime,
-                              chimeStyle: ttsChimeStyle
+              <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
+                {waitingBookings
+                  .filter(b => {
+                    if (!waitingSearch) return true
+                    const q = waitingSearch.toLowerCase()
+                    const name = getNameForBooking(b).toLowerCase()
+                    const numStr = b.queue_number.toString()
+                    const formattedNum = `${prefix}${String(b.queue_number).padStart(3, '0')}`.toLowerCase()
+                    return name.includes(q) || numStr.includes(q) || formattedNum.includes(q)
+                  })
+                  .map(b => {
+                    const name = getNameForBooking(b)
+                    return (
+                      <div key={b.id} className="queue-item">
+                        <span className="queue-item-num">#{prefix}{String(b.queue_number).padStart(3, '0')}</span>
+                        {name && <span className="queue-item-name">{name}</span>}
+                        <button className="btn btn-ghost btn-sm" onClick={async () => {
+                          // Add this specific person to front
+                          const { error } = await supabase
+                            .from('queue_sessions')
+                            .update({ current_numbers: [b.queue_number] })
+                            .eq('event_id', eventId)
+                          if (!error) {
+                            await supabase.from('bookings').update({ status: 'called', called_at: new Date().toISOString() }).eq('id', b.id)
+                            setSession(prev => prev ? { ...prev, current_numbers: [b.queue_number] } : prev)
+                            setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'called' as Booking['status'] } : x))
+                            toast.success(`เรียก #${prefix}${b.queue_number} แล้ว`)
+                            if (session) {
+                              supabase.channel(`queue:${eventId}`).send({
+                                type: 'broadcast',
+                                event: 'TTS_PLAY',
+                                payload: {
+                                  language: session.language, queueNumbers: [b.queue_number], names: [name],
+                                  showName: ttsCallName, phrase: ttsPhrase, voiceGender: ttsVoiceGender, useEndingWord: ttsUseEnding, endingWord: ttsEndingWord,
+                                  playChime: ttsPlayChime,
+                                  chimeStyle: ttsChimeStyle
+                                }
+                              })
                             }
-                          })
-                        }
-                      }
-                    }}>เรียก</button>
-                  </div>
-                )
-              })
-            )}
-            {event?.queue_type !== 'scheduled' && waitingBookings.length > 20 && (
-              <div style={{ padding: 'var(--space-3)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                ...และอีก {waitingBookings.length - 20} คน
+                          }
+                        }}>เรียก</button>
+                      </div>
+                    )
+                  })}
               </div>
             )}
           </div>
