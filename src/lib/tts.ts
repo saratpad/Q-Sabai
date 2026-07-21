@@ -18,6 +18,66 @@ export interface TTSOptions {
 }
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
+let currentAudio: HTMLAudioElement | null = null
+
+// Phonetic map for English letters to Thai spoken words
+const ENGLISH_LETTER_TO_THAI: Record<string, string> = {
+  'A': 'เอ', 'B': 'บี', 'C': 'ซี', 'D': 'ดี', 'E': 'อี',
+  'F': 'เอฟ', 'G': 'จี', 'H': 'เอช', 'I': 'ไอ', 'J': 'เจ',
+  'K': 'เค', 'L': 'เอล', 'M': 'เอ็ม', 'N': 'เอ็น', 'O': 'โอ',
+  'P': 'พี', 'Q': 'คิว', 'R': 'อาร์', 'S': 'เอส', 'T': 'ที',
+  'U': 'ยู', 'V': 'วี', 'W': 'ดับเบิ้ลยู', 'X': 'เอ็กซ์', 'Y': 'วาย', 'Z': 'แซด'
+}
+
+/**
+ * Convert prefix letters (e.g., "A", "B", "VIP") into clear Thai phonetic words
+ */
+export const formatPrefixPhonetic = (prefix: string): string => {
+  if (!prefix) return ''
+  let result = ''
+  for (const char of prefix.toUpperCase()) {
+    if (ENGLISH_LETTER_TO_THAI[char]) {
+      result += `${ENGLISH_LETTER_TO_THAI[char]} `
+    } else if (/[0-9]/.test(char)) {
+      result += `${char} `
+    }
+  }
+  return result.trim()
+}
+
+/**
+ * Play text using Google Translate TTS Endpoint (High quality, free Thai TTS)
+ */
+export const speakWithGoogleTTS = (text: string, lang: 'th' | 'en' = 'th'): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const cleanText = text.replace(/\s+/g, ' ').trim()
+    if (!cleanText) {
+      resolve()
+      return
+    }
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=${lang}&client=tw-ob`
+
+    stopSpeech()
+
+    const audio = new Audio(url)
+    currentAudio = audio
+
+    audio.onended = () => {
+      currentAudio = null
+      resolve()
+    }
+
+    audio.onerror = (e) => {
+      currentAudio = null
+      reject(e)
+    }
+
+    audio.play().catch((err) => {
+      currentAudio = null
+      reject(err)
+    })
+  })
+}
 
 export type ChimeStyle = 'classic' | 'bell' | 'dingdong' | 'melodic' | 'alert' | 'elevator' | 'digital' | 'triple_bell';
 
@@ -288,56 +348,67 @@ export const playChime = async (style: ChimeStyle = 'classic'): Promise<void> =>
 
 // ── TTS (Speech) ───────────────────────────────────────────────────────────
 export const speakQueue = async (options: TTSOptions): Promise<void> => {
-  if (!window.speechSynthesis) {
-    return Promise.reject(new Error('Speech synthesis not supported'))
-  }
-
-  let voices = window.speechSynthesis.getVoices()
-  if (voices.length === 0) {
-    voices = await loadVoices()
-  }
+  const { language, queueNumbers, prefix, names, showName, phrase, voiceGender = 'female', useEndingWord = true, endingWord = 'ค่ะ' } = options
+  const isThai = language === 'th'
 
   if (options.playChime !== false) {
     await playChime(options.chimeStyle || 'classic').catch(err => console.error("Chime Error:", err))
   }
 
+  let text = ''
+  const callPhrase = phrase || (isThai ? 'ขอเชิญหมายเลข' : 'Please welcome number')
+  const defaultEnding = voiceGender === 'male' ? 'ครับ' : 'ค่ะ'
+  const finalEnding = useEndingWord ? (endingWord || defaultEnding) : ''
+  const endingText = finalEnding ? ` ${finalEnding}` : ''
+
+  if (isThai) {
+    const formattedPrefix = prefix ? formatPrefixPhonetic(prefix) : ''
+    const p = formattedPrefix ? `${formattedPrefix} ` : ''
+    if (queueNumbers.length === 1) {
+      text = `${callPhrase} ${p}${queueNumbers[0]}`
+      if (showName && names && names[0]) {
+        text += ` คุณ ${names[0]}`
+      }
+      text += endingText
+    } else {
+      const numsText = queueNumbers.map(n => `${p}${n}`).join(', ')
+      text = `${callPhrase} ${numsText}${endingText}`
+    }
+  } else {
+    const p = prefix ? `${prefix}` : ''
+    if (queueNumbers.length === 1) {
+      text = `${callPhrase} ${p}${queueNumbers[0]}`
+      if (showName && names && names[0]) {
+        text += `, ${names[0]}`
+      }
+      text += '. Please proceed.'
+    } else {
+      const numsText = queueNumbers.map(n => `${p}${n}`).join(', ')
+      text = `${callPhrase}s ${numsText}. Please proceed.`
+    }
+  }
+
+  // 1. Try Google Translate TTS first (High quality natural Thai voice, free)
+  try {
+    await speakWithGoogleTTS(text, isThai ? 'th' : 'en')
+    return
+  } catch (err) {
+    console.warn("Google TTS fallback to Web Speech API:", err)
+  }
+
+  // 2. Fallback to browser Web Speech API
+  if (!window.speechSynthesis) {
+    return Promise.reject(new Error('Speech synthesis not supported'))
+  }
+
+  let voices = window.speechSynthesis.getVoices()
+  const hasMatchingLangVoice = voices.some(v => isThai ? v.lang.toLowerCase().startsWith('th') : v.lang.toLowerCase().startsWith('en'))
+  if (voices.length === 0 || !hasMatchingLangVoice) {
+    voices = await loadVoices()
+  }
+
   return new Promise((resolve, reject) => {
     window.speechSynthesis.cancel()
-
-    const { language, queueNumbers, prefix, names, showName, phrase, voiceGender = 'female', useEndingWord = true, endingWord = 'ค่ะ' } = options
-    const isThai = language === 'th'
-
-    let text = ''
-    const p = prefix ? `${prefix}` : ''
-    const callPhrase = phrase || (isThai ? 'ขอเชิญหมายเลข' : 'Please welcome number')
-
-    const defaultEnding = voiceGender === 'male' ? 'ครับ' : 'ค่ะ'
-    const finalEnding = useEndingWord ? (endingWord || defaultEnding) : ''
-    const endingText = finalEnding ? ` ${finalEnding}` : ''
-
-    if (isThai) {
-      if (queueNumbers.length === 1) {
-        text = `${callPhrase} ${p}${queueNumbers[0]}`
-        if (showName && names && names[0]) {
-          text += ` คุณ ${names[0]}`
-        }
-        text += endingText
-      } else {
-        const numsText = queueNumbers.map(n => `${p}${n}`).join(', ')
-        text = `${callPhrase} ${numsText}${endingText}`
-      }
-    } else {
-      if (queueNumbers.length === 1) {
-        text = `${callPhrase} ${p}${queueNumbers[0]}`
-        if (showName && names && names[0]) {
-          text += `, ${names[0]}`
-        }
-        text += '. Please proceed.'
-      } else {
-        const numsText = queueNumbers.map(n => `${p}${n}`).join(', ')
-        text = `${callPhrase}s ${numsText}. Please proceed.`
-      }
-    }
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = isThai ? 'th-TH' : 'en-US'
@@ -348,11 +419,15 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
     const getVoiceScore = (v: SpeechSynthesisVoice) => {
       let score = 0
       const lang = v.lang.toLowerCase()
-      if (isThai && lang.startsWith('th')) score += 10
-      if (!isThai && lang.startsWith('en')) score += 10
+      if (isThai && !lang.startsWith('th')) return -100
+      if (!isThai && !lang.startsWith('en')) return -100
+
+      score += 10
       if (v.default) score += 2
 
       const name = (v.name + ' ' + v.voiceURI).toLowerCase()
+      if (name.includes('google')) score += 20 // Prioritize Google Voice in Web Speech API
+
       const isFemaleName = name.includes('female') || name.includes('woman') || name.includes('girl') || name.includes('premwadee') || name.includes('kanya') || name.includes('narisa') || name.includes('samantha') || name.includes('-f')
       const isMaleName = (name.includes('male') && !name.includes('female')) || name.includes('man') || name.includes('boy') || name.includes('pattara') || name.includes('niwat') || name.includes('-m')
 
@@ -367,10 +442,10 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
       return score
     }
 
-    const bestVoice = [...voices].sort((a, b) => getVoiceScore(b) - getVoiceScore(a))[0]
-
-    if (bestVoice && getVoiceScore(bestVoice) > 0) {
-      utterance.voice = bestVoice
+    const matchingVoices = [...voices].filter(v => getVoiceScore(v) > 0)
+    if (matchingVoices.length > 0) {
+      matchingVoices.sort((a, b) => getVoiceScore(b) - getVoiceScore(a))
+      utterance.voice = matchingVoices[0]
     }
 
     utterance.onend = () => resolve()
@@ -382,25 +457,43 @@ export const speakQueue = async (options: TTSOptions): Promise<void> => {
 }
 
 export const stopSpeech = () => {
-  window.speechSynthesis.cancel()
+  if (currentAudio) {
+    currentAudio.pause()
+    currentAudio.currentTime = 0
+    currentAudio = null
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  }
   currentUtterance = null
 }
 
 export const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   return new Promise((resolve) => {
-    const voices = window.speechSynthesis.getVoices()
-    if (voices.length > 0) {
-      resolve(voices)
-    } else {
-      let resolved = false
-      const handleVoices = () => {
-        if (!resolved) {
-          resolved = true
-          resolve(window.speechSynthesis.getVoices())
-        }
+    const checkVoices = () => {
+      const voices = window.speechSynthesis.getVoices()
+      const hasThaiVoice = voices.some(v => v.lang.toLowerCase().startsWith('th'))
+      if (voices.length > 0 && hasThaiVoice) {
+        return voices
       }
-      window.speechSynthesis.onvoiceschanged = handleVoices
-      setTimeout(handleVoices, 1000)
+      return null
     }
+
+    const immediate = checkVoices()
+    if (immediate) {
+      resolve(immediate)
+      return
+    }
+
+    let resolved = false
+    const handleVoices = () => {
+      if (!resolved) {
+        resolved = true
+        resolve(window.speechSynthesis.getVoices())
+      }
+    }
+
+    window.speechSynthesis.onvoiceschanged = handleVoices
+    setTimeout(handleVoices, 1000)
   })
 }
