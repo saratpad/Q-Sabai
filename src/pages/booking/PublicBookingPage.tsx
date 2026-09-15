@@ -8,6 +8,7 @@ import type { Event, EventSlot, CustomField, Booking } from '../../lib/database.
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { TicketCard } from '../../components/ticket/TicketCard'
 import './PublicBookingPage.css'
 
 export default function PublicBookingPage() {
@@ -41,15 +42,17 @@ export default function PublicBookingPage() {
   const [ticketImageUrl, setTicketImageUrl] = useState<string | null>(null)
   const ticketRef = useRef<HTMLDivElement>(null)
 
+  const isTicketEnabled = (event?.settings as any)?.ticket_enabled !== false
+
   useEffect(() => {
-    if (step === 'done' && myBooking && !ticketDownloaded) {
+    if (step === 'done' && myBooking && !ticketDownloaded && isTicketEnabled) {
       const timer = setTimeout(() => {
         handleDownloadTicket()
         setTicketDownloaded(true)
       }, 1000)
       return () => clearTimeout(timer)
     }
-  }, [step, myBooking, ticketDownloaded])
+  }, [step, myBooking, ticketDownloaded, isTicketEnabled])
 
   const handleCloseWindow = () => {
     if (eventId) {
@@ -71,9 +74,14 @@ export default function PublicBookingPage() {
   }
 
   const handleDownloadTicket = async () => {
-    if (!ticketRef.current || !event) return
+    if (!ticketRef.current || !event || !isTicketEnabled) return
     try {
-      const canvas = await html2canvas(ticketRef.current, { backgroundColor: '#111827', scale: 2 })
+      const canvas = await html2canvas(ticketRef.current, { 
+        backgroundColor: null, 
+        scale: 2,
+        useCORS: true,
+        allowTaint: false
+      })
       const url = canvas.toDataURL('image/png')
       setTicketImageUrl(url)
       const a = document.createElement('a')
@@ -142,18 +150,22 @@ export default function PublicBookingPage() {
 
     // Validate fields
     for (const field of customFields) {
-      const val = fieldValues[field.id] || ''
-      if (field.is_required && !val.trim()) {
+      let val = (fieldValues[field.id] || '').trim()
+      if (field.is_required && !val) {
         toast.error(`กรุณากรอก ${field.label}`)
         return
       }
 
       // Phone number validation
       if (field.field_type === 'phone' && val) {
-        if (!/^0[689]\d{8}$/.test(val)) {
-          toast.error(`กรุณากรอกเบอร์มือถือให้ถูกต้อง (เช่น 0891234567, ห้ามมีขีดกลาง)`)
+        // Auto-clean spaces and hyphens so user input with dashes/spaces works smoothly
+        const cleanedPhone = val.replace(/[-\s]/g, '')
+        if (!/^0[689]\d{8}$/.test(cleanedPhone)) {
+          toast.error(`กรุณากรอก ${field.label} ให้ถูกต้อง (เช่น 0891234567)`)
           return
         }
+        // Save cleaned phone value
+        fieldValues[field.id] = cleanedPhone
       }
     }
 
@@ -251,9 +263,10 @@ export default function PublicBookingPage() {
 
 
   const handleSearchAndCancel = async () => {
-    if (!cancelPhone.trim()) return
-    if (!/^0[689]\d{8}$/.test(cancelPhone)) {
-      toast.error('กรุณากรอกเบอร์มือถือให้ถูกต้อง')
+    const cleaned = cancelPhone.trim().replace(/[-\s]/g, '')
+    if (!cleaned) return
+    if (!/^0[689]\d{8}$/.test(cleaned)) {
+      toast.error('กรุณากรอกเบอร์มือถือให้ถูกต้อง (เช่น 0891234567)')
       return
     }
 
@@ -515,47 +528,89 @@ export default function PublicBookingPage() {
       {/* Done state - My booking */}
       {step === 'done' && myBooking && (
         <div className="booking-success-card glass-card fade-in">
-          <div className="booking-success-icon">🎫</div>
+          <div className="booking-success-icon">{isTicketEnabled ? '🎫' : '📋'}</div>
           <div className="booking-success-title">จองคิวสำเร็จ!</div>
 
-          {ticketImageUrl ? (
-            <img src={ticketImageUrl} alt="Ticket" style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: '16px' }} />
-          ) : (
-            <div className="booking-ticket" ref={ticketRef} style={{ padding: '24px', borderRadius: '12px' }}>
-              <div className="booking-ticket-label">หมายเลขคิวของคุณ</div>
-              <div className="booking-ticket-number">
-                {(event.settings as any)?.queue_prefix || ''}{String(myBooking.queue_number).padStart(3, '0')}
-              </div>
-              <div className="booking-ticket-event">{event.title}</div>
-              {myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) && (
-                <div className="booking-ticket-slot" style={{ fontWeight: 600, color: 'var(--color-primary)', margin: '8px 0', fontSize: '1.1rem' }}>
-                  รอบ: {slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - {slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.
-                </div>
+          {isTicketEnabled ? (
+            <>
+              {ticketImageUrl ? (
+                <img 
+                  src={ticketImageUrl} 
+                  alt="Ticket" 
+                  style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: '16px' }} 
+                />
+              ) : (
+                <TicketCard
+                  ticketRef={ticketRef}
+                  settings={(event.settings as any) || {}}
+                  queueNumber={`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
+                  eventTitle={event.title}
+                  slotInfo={myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) ? `รอบ: ${slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - ${slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.` : null}
+                  dateStr={format(new Date(myBooking.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
+                />
               )}
-              <div className="booking-ticket-date">
-                จองเมื่อ {format(new Date(myBooking.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
-              </div>
-            </div>
-          )}
 
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>
-            กรุณารอฟังเรียกหมายเลขคิวของคุณ <br /> (หากไม่ได้ภาพตั๋ว สามารถกดค้างที่รูปภาพเพื่อบันทึกได้)
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-danger btn-sm" onClick={handleCloseWindow}>
-              ✕ ปิดหน้าต่าง
-            </button>
-            {event.parent_id && (
-              <button className="btn btn-ghost btn-sm" onClick={() => {
-                if (eventId) {
-                  localStorage.removeItem('booking_' + eventId)
-                }
-                window.location.href = `/book/${event.parent_id}`
-              }} style={{ border: '1px solid var(--color-border)' }}>
-                ✕ เลือกกิจกรรมอื่น
-              </button>
-            )}
-          </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>
+                กรุณารอฟังเรียกหมายเลขคิวของคุณ <br /> (หากไม่ได้ภาพตั๋ว สามารถกดค้างที่รูปภาพเพื่อบันทึกได้)
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {ticketImageUrl && (
+                  <button className="btn btn-secondary btn-sm" onClick={handleDownloadTicket}>
+                    📥 บันทึกตั๋วคิว
+                  </button>
+                )}
+                <button className="btn btn-danger btn-sm" onClick={handleCloseWindow}>
+                  ✕ ปิดหน้าต่าง
+                </button>
+                {event.parent_id && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    if (eventId) {
+                      localStorage.removeItem('booking_' + eventId)
+                    }
+                    window.location.href = `/book/${event.parent_id}`
+                  }} style={{ border: '1px solid var(--color-border)' }}>
+                    ✕ เลือกกิจกรรมอื่น
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            /* รูปแบบจองคิวธรรมดา */
+            <>
+              <div style={{ width: '100%', maxWidth: '340px', margin: '0 auto 16px auto' }}>
+                <TicketCard
+                  ticketRef={ticketRef}
+                  settings={{ ticket_enabled: false }}
+                  queueNumber={`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
+                  eventTitle={event.title}
+                  slotInfo={myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) ? `รอบ: ${slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - ${slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.` : null}
+                  dateStr={format(new Date(myBooking.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
+                />
+              </div>
+
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>
+                กรุณารอฟังเรียกหมายเลขคิวของคุณ หรือสังเกตที่หน้าจอแสดงผลคิว
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
+                  🖨️ พิมพ์ใบคิว
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={handleCloseWindow}>
+                  ✕ ปิดหน้าต่าง
+                </button>
+                {event.parent_id && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    if (eventId) {
+                      localStorage.removeItem('booking_' + eventId)
+                    }
+                    window.location.href = `/book/${event.parent_id}`
+                  }} style={{ border: '1px solid var(--color-border)' }}>
+                    ✕ เลือกกิจกรรมอื่น
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

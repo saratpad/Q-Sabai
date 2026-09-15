@@ -166,3 +166,40 @@
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
+
+/* Print styles for slip */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .app-header,
+  .app-footer,
+  .btn,
+  .booking-header,
+  .booking-success-icon,
+  .booking-success-title,
+  p {
+    display: none !important;
+  }
+  .booking-page {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .glass-card {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .standard-slip-preview {
+    border: 1px dashed #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    margin: 20px auto !important;
+  }
+  .standard-slip-number {
+    color: #000 !important;
+  }
+}

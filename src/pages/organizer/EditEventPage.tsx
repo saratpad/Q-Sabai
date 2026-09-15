@@ -6,6 +6,9 @@ import { useAuthStore } from '../../stores/authStore'
 import type { CustomField } from '../../lib/database.types'
 import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
+import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
+import type { TicketSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -81,6 +84,17 @@ export default function EditEventPage() {
         setTtsEndingWord((event.settings as any)?.tts_ending_word || 'ค่ะ')
         setTtsPlayChime((event.settings as any)?.tts_play_chime ?? true)
         setTtsChimeStyle((event.settings as any)?.tts_chime_style || 'classic')
+        const ts = (event.settings as any) || {}
+        setTicketSettings({
+          ticket_enabled: ts.ticket_enabled ?? true,
+          ticket_bg_type: ts.ticket_bg_type || 'color',
+          ticket_bg_color: ts.ticket_bg_color || '#111827',
+          ticket_bg_image: ts.ticket_bg_image || null,
+          ticket_bg_overlay: ts.ticket_bg_overlay ?? 40,
+          ticket_text_color: ts.ticket_text_color || '#f8fafc',
+          ticket_number_color: ts.ticket_number_color || '#38bdf8',
+          ticket_font_size: ts.ticket_font_size || 'medium',
+        })
         setQueueType(event.queue_type as any)
         if (event.banner_url) {
           setBannerPreview(event.banner_url)
@@ -127,6 +141,7 @@ export default function EditEventPage() {
   const [ttsChimeStyle, setTtsChimeStyle] = useState<'classic' | 'bell' | 'dingdong' | 'melodic'>('classic')
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled'>('unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
+  const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
   const [slots, setSlots] = useState<SlotInput[]>([
     { id: uuidv4(), slot_date: '', start_time: '09:00', end_time: '10:00', capacity: 10 }
   ])
@@ -220,7 +235,8 @@ export default function EditEventPage() {
           tts_use_ending: ttsUseEnding,
           tts_ending_word: ttsEndingWord.trim(),
           tts_play_chime: ttsPlayChime,
-          tts_chime_style: ttsChimeStyle
+          tts_chime_style: ttsChimeStyle,
+          ...ticketSettings,
         },
       }
       if (bannerFile) {
@@ -590,6 +606,17 @@ export default function EditEventPage() {
                   ))}
                 </div>
               )}
+
+              <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
+                <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                <TicketCustomizer
+                  settings={ticketSettings}
+                  onChange={setTicketSettings}
+                  userId={user?.id}
+                  eventTitle={title}
+                  queuePrefix={queuePrefix}
+                />
+              </div>
             </div>
           </div>
         )}

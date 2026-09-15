@@ -8,6 +8,10 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
+import { useAuthStore } from '../../stores/authStore'
+import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
+import type { TicketSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
 import './EventDetailPage.css'
 
 type Tab = 'bookings' | 'settings' | 'qr' | 'line' | 'activities'
@@ -23,9 +27,11 @@ const STATUS_LABELS: Record<Booking['status'], string> = {
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const qrRef = useRef<HTMLCanvasElement>(null)
 
   const [event, setEvent] = useState<Event | null>(null)
+  const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
   const [bookings, setBookings] = useState<BookingWithProfile[]>([])
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [queueSession, setQueueSession] = useState<QueueSession | null>(null)
@@ -125,6 +131,17 @@ export default function EventDetailPage() {
 
       if (eventRes.data) {
         setEvent(eventRes.data)
+        const ts = (eventRes.data.settings as any) || {}
+        setTicketSettings({
+          ticket_enabled: ts.ticket_enabled ?? true,
+          ticket_bg_type: ts.ticket_bg_type || 'color',
+          ticket_bg_color: ts.ticket_bg_color || '#111827',
+          ticket_bg_image: ts.ticket_bg_image || null,
+          ticket_bg_overlay: ts.ticket_bg_overlay ?? 40,
+          ticket_text_color: ts.ticket_text_color || '#f8fafc',
+          ticket_number_color: ts.ticket_number_color || '#38bdf8',
+          ticket_font_size: ts.ticket_font_size || 'medium',
+        })
         if (eventRes.data.is_group) {
           if (activeTab === 'bookings' || activeTab === 'settings' || activeTab === 'line') {
             setActiveTab('activities')
@@ -775,6 +792,35 @@ export default function EventDetailPage() {
                   <span className="toggle-slider" />
                 </label>
               </div>
+            </div>
+
+            <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    ปรับแต่งสี พื้นหลัง ขนาดฟอนต์ หรือเปิด/ปิดตั๋วคิว
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={async () => {
+                    const newSettings = { ...(event.settings as any || {}), ...ticketSettings }
+                    setEvent(prev => prev ? { ...prev, settings: newSettings } : prev)
+                    await supabase.from('events').update({ settings: newSettings }).eq('id', eventId)
+                    toast.success('บันทึกการตั้งค่าตั๋วคิวสำเร็จ')
+                  }}
+                >
+                  💾 บันทึกการตั้งค่าตั๋ว
+                </button>
+              </div>
+              <TicketCustomizer
+                settings={ticketSettings}
+                onChange={setTicketSettings}
+                userId={user?.id}
+                eventTitle={event.title}
+                queuePrefix={(event.settings as any)?.queue_prefix || ''}
+              />
             </div>
           </div>
         </div>

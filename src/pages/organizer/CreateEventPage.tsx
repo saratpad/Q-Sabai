@@ -5,6 +5,9 @@ import { useAuthStore } from '../../stores/authStore'
 import type { CustomField } from '../../lib/database.types'
 import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
+import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
+import type { TicketSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -71,6 +74,7 @@ export default function CreateEventPage() {
   const [ttsChimeStyle, setTtsChimeStyle] = useState<'classic' | 'bell' | 'dingdong' | 'melodic'>('classic')
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled' | 'group'>(initialIsGroup ? 'group' : 'unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
+  const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
   const isGroup = queueType === 'group'
 
   const [slots, setSlots] = useState<SlotInput[]>([
@@ -155,7 +159,8 @@ export default function CreateEventPage() {
             tts_use_ending: ttsUseEnding,
             tts_ending_word: ttsEndingWord.trim(),
             tts_play_chime: ttsPlayChime,
-            tts_chime_style: ttsChimeStyle
+            tts_chime_style: ttsChimeStyle,
+            ...ticketSettings,
           },
         })
         .select()
@@ -555,6 +560,19 @@ export default function CreateEventPage() {
                   </div>
                 </div>
               )}
+
+              {!isGroup && (
+                <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
+                  <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <TicketCustomizer
+                    settings={ticketSettings}
+                    onChange={setTicketSettings}
+                    userId={user?.id}
+                    eventTitle={title}
+                    queuePrefix={queuePrefix}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -627,6 +645,12 @@ export default function CreateEventPage() {
                     <div className="confirm-item">
                       <span className="confirm-label">คำถาม</span>
                       <span className="confirm-value">{fields.filter(f => f.label).length} ข้อ</span>
+                    </div>
+                    <div className="confirm-item">
+                      <span className="confirm-label">รูปแบบบัตร</span>
+                      <span className="confirm-value">
+                        {ticketSettings.ticket_enabled !== false ? '🎫 ตั๋วคิวตกแต่ง' : '📋 รูปแบบจองคิวธรรมดา'}
+                      </span>
                     </div>
                   </>
                 )}
