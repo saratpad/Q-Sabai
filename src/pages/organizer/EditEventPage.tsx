@@ -537,6 +537,17 @@ export default function EditEventPage() {
                     )}
                   </div>
                 </div>
+
+                <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
+                  <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <TicketCustomizer
+                    settings={ticketSettings}
+                    onChange={setTicketSettings}
+                    userId={user?.id}
+                    eventTitle={title}
+                    queuePrefix={queuePrefix}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -607,16 +618,7 @@ export default function EditEventPage() {
                 </div>
               )}
 
-              <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
-                <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
-                <TicketCustomizer
-                  settings={ticketSettings}
-                  onChange={setTicketSettings}
-                  userId={user?.id}
-                  eventTitle={title}
-                  queuePrefix={queuePrefix}
-                />
-              </div>
+
             </div>
           </div>
         )}
