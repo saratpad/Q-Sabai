@@ -1,9 +1,70 @@
+.booking-page-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  padding: var(--space-6) var(--space-4);
+  box-sizing: border-box;
+}
+
+.booking-page-bg-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .booking-page {
+  position: relative;
+  z-index: 1;
   max-width: 600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+/* Card Themes */
+.booking-page-container.theme-solid .glass-card {
+  background: #1a2235;
+  backdrop-filter: none;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.booking-page-container.theme-light .glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1e293b;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.booking-page-container.theme-light .form-input,
+.booking-page-container.theme-light .form-select {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.booking-page-container.theme-light .form-label {
+  color: #334155;
+}
+
+.booking-page-container.theme-light .slot-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.booking-page-container.theme-light .booking-login-prompt {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #b45309;
 }
 
 .booking-event-card {

@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { TicketCard } from '../../components/ticket/TicketCard'
+import { PAGE_TITLE_SIZES, PAGE_DESC_SIZES } from '../../components/ticket/ticketTypes'
 import './PublicBookingPage.css'
 
 export default function PublicBookingPage() {
@@ -379,8 +380,32 @@ export default function PublicBookingPage() {
 
   const isEventOpen = event.status === 'active'
 
+  const pageSettings = (event.settings as any) || {}
+  const pageTitleColor = pageSettings.page_title_color || undefined
+  const pageTitleSize = pageSettings.page_title_size ? (PAGE_TITLE_SIZES[pageSettings.page_title_size as keyof typeof PAGE_TITLE_SIZES]?.fontSize) : undefined
+  const pageDescColor = pageSettings.page_desc_color || undefined
+  const pageDescSize = pageSettings.page_desc_size ? (PAGE_DESC_SIZES[pageSettings.page_desc_size as keyof typeof PAGE_DESC_SIZES]?.fontSize) : undefined
+  const pageBgType = pageSettings.page_bg_type || 'default'
+  const pageBgColor = pageSettings.page_bg_color || undefined
+  const pageBgImage = pageSettings.page_bg_image || null
+  const pageBgOverlay = pageSettings.page_bg_overlay ?? 30
+  const pageCardTheme = pageSettings.page_card_theme || 'glass'
+
   return (
-    <div className="booking-page fade-in">
+    <div
+      className={`booking-page-container theme-${pageCardTheme}`}
+      style={{
+        backgroundColor: pageBgType === 'color' && pageBgColor ? pageBgColor : undefined,
+        backgroundImage: pageBgType === 'image' && pageBgImage ? `url("${pageBgImage}")` : undefined,
+      }}
+    >
+      {pageBgType === 'image' && pageBgImage && (
+        <div
+          className="booking-page-bg-overlay"
+          style={{ backgroundColor: `rgba(0, 0, 0, ${pageBgOverlay / 100})` }}
+        />
+      )}
+      <div className="booking-page fade-in">
       {/* Cancel Modal */}
       {showCancelModal && (
         <div className="modal-overlay fade-in" onClick={() => setShowCancelModal(false)}>
@@ -466,14 +491,33 @@ export default function PublicBookingPage() {
         )}
         <div className="booking-event-info">
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-            <h1 className="booking-event-title" style={{ wordBreak: 'break-word' }}>{event.title}</h1>
+            <h1
+              className="booking-event-title"
+              style={{
+                wordBreak: 'break-word',
+                color: pageTitleColor,
+                fontSize: pageTitleSize,
+              }}
+            >
+              {event.title}
+            </h1>
             {isEventOpen ? (
               <span className="badge badge-active">● เปิดรับจอง</span>
             ) : (
               <span className="badge badge-closed">✕ ปิดแล้ว</span>
             )}
           </div>
-          {event.description && <p className="booking-event-desc">{event.description}</p>}
+          {event.description && (
+            <p
+              className="booking-event-desc"
+              style={{
+                color: pageDescColor,
+                fontSize: pageDescSize,
+              }}
+            >
+              {event.description}
+            </p>
+          )}
           <div className="booking-event-meta">
             {event.is_group ? (
               <span>📁 กรุณาเลือกกิจกรรมที่ต้องการจอง</span>
@@ -712,6 +756,7 @@ export default function PublicBookingPage() {
           <div className="empty-state-desc">ขอบคุณที่ใช้บริการ {systemName}</div>
         </div>
       )}
+      </div>
     </div>
   )
 }

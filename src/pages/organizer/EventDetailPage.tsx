@@ -10,8 +10,9 @@ import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../stores/authStore'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
-import type { TicketSettings } from '../../components/ticket/ticketTypes'
-import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
+import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
 import './EventDetailPage.css'
 
 type Tab = 'bookings' | 'settings' | 'qr' | 'line' | 'activities'
@@ -32,6 +33,7 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<Event | null>(null)
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
+  const [pageStyleSettings, setPageStyleSettings] = useState<PageStyleSettings>(DEFAULT_PAGE_STYLE_SETTINGS)
   const [bookings, setBookings] = useState<BookingWithProfile[]>([])
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [queueSession, setQueueSession] = useState<QueueSession | null>(null)
@@ -141,6 +143,17 @@ export default function EventDetailPage() {
           ticket_text_color: ts.ticket_text_color || '#f8fafc',
           ticket_number_color: ts.ticket_number_color || '#38bdf8',
           ticket_font_size: ts.ticket_font_size || 'medium',
+        })
+        setPageStyleSettings({
+          page_title_color: ts.page_title_color || '#f1f5f9',
+          page_title_size: ts.page_title_size || 'medium',
+          page_desc_color: ts.page_desc_color || '#94a3b8',
+          page_desc_size: ts.page_desc_size || 'medium',
+          page_bg_type: ts.page_bg_type || 'default',
+          page_bg_color: ts.page_bg_color || '#0a0f1e',
+          page_bg_image: ts.page_bg_image || null,
+          page_bg_overlay: ts.page_bg_overlay ?? 30,
+          page_card_theme: ts.page_card_theme || 'glass',
         })
         if (eventRes.data.is_group) {
           if (activeTab === 'bookings' || activeTab === 'settings' || activeTab === 'line') {
@@ -794,12 +807,43 @@ export default function EventDetailPage() {
               </div>
             </div>
 
+            {/* Section: Page Style Customizer */}
             <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0 }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <h3 style={{ margin: 0 }}>🎨 ปรับแต่งหน้าจองคิว (Public Booking Page)</h3>
                   <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                    ปรับแต่งสี พื้นหลัง ขนาดฟอนต์ หรือเปิด/ปิดตั๋วคิว
+                    ปรับแต่งสี ขนาดตัวอักษรของหัวข้อและรายละเอียดกิจกรรม รวมถึงสีหรือภาพพื้นหลังหน้าจอง
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={async () => {
+                    const newSettings = { ...(event.settings as any || {}), ...pageStyleSettings }
+                    setEvent(prev => prev ? { ...prev, settings: newSettings } : prev)
+                    await supabase.from('events').update({ settings: newSettings }).eq('id', eventId)
+                    toast.success('บันทึกการตั้งค่าหน้าจองคิวสำเร็จ')
+                  }}
+                >
+                  💾 บันทึกการตั้งค่าหน้าจอง
+                </button>
+              </div>
+              <PageStyleCustomizer
+                settings={pageStyleSettings}
+                onChange={setPageStyleSettings}
+                userId={user?.id}
+                eventTitle={event.title}
+                eventDesc={event.description || ''}
+              />
+            </div>
+
+            {/* Section: Ticket Customizer */}
+            <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>🎫 ตั้งค่าบัตรคิว (Queue Ticket)</h3>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    เปิด/ปิดตั๋วคิว ปรับแต่งสี ขนาด หรือภาพพื้นหลังของตั๋วคิวที่ผู้จองจะได้รับ
                   </div>
                 </div>
                 <button 

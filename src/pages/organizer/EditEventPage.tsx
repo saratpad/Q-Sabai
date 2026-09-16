@@ -7,8 +7,9 @@ import type { CustomField } from '../../lib/database.types'
 import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
-import type { TicketSettings } from '../../components/ticket/ticketTypes'
-import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
+import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -95,6 +96,17 @@ export default function EditEventPage() {
           ticket_number_color: ts.ticket_number_color || '#38bdf8',
           ticket_font_size: ts.ticket_font_size || 'medium',
         })
+        setPageStyleSettings({
+          page_title_color: ts.page_title_color || '#f1f5f9',
+          page_title_size: ts.page_title_size || 'medium',
+          page_desc_color: ts.page_desc_color || '#94a3b8',
+          page_desc_size: ts.page_desc_size || 'medium',
+          page_bg_type: ts.page_bg_type || 'default',
+          page_bg_color: ts.page_bg_color || '#0a0f1e',
+          page_bg_image: ts.page_bg_image || null,
+          page_bg_overlay: ts.page_bg_overlay ?? 30,
+          page_card_theme: ts.page_card_theme || 'glass',
+        })
         setQueueType(event.queue_type as any)
         if (event.banner_url) {
           setBannerPreview(event.banner_url)
@@ -142,6 +154,7 @@ export default function EditEventPage() {
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled'>('unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
+  const [pageStyleSettings, setPageStyleSettings] = useState<PageStyleSettings>(DEFAULT_PAGE_STYLE_SETTINGS)
   const [slots, setSlots] = useState<SlotInput[]>([
     { id: uuidv4(), slot_date: '', start_time: '09:00', end_time: '10:00', capacity: 10 }
   ])
@@ -237,6 +250,7 @@ export default function EditEventPage() {
           tts_play_chime: ttsPlayChime,
           tts_chime_style: ttsChimeStyle,
           ...ticketSettings,
+          ...pageStyleSettings,
         },
       }
       if (bannerFile) {
@@ -539,7 +553,24 @@ export default function EditEventPage() {
                 </div>
 
                 <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
-                  <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <h3 style={{ marginBottom: 'var(--space-2)' }}>🎨 ปรับแต่งหน้าจองคิว (Public Booking Page)</h3>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-4)' }}>
+                    ปรับแต่งสี ขนาดตัวอักษรของหัวข้อและรายละเอียดกิจกรรม รวมถึงสีหรือภาพพื้นหลังหน้าจอง
+                  </p>
+                  <PageStyleCustomizer
+                    settings={pageStyleSettings}
+                    onChange={setPageStyleSettings}
+                    userId={user?.id}
+                    eventTitle={title}
+                    eventDesc={description}
+                  />
+                </div>
+
+                <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
+                  <h3 style={{ marginBottom: 'var(--space-2)' }}>🎫 ตั้งค่าบัตรคิว (Queue Ticket)</h3>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-4)' }}>
+                    เปิด/ปิดตั๋วคิว ปรับแต่งสี ขนาด หรือภาพพื้นหลังของตั๋วคิวที่ผู้จองจะได้รับ
+                  </p>
                   <TicketCustomizer
                     settings={ticketSettings}
                     onChange={setTicketSettings}

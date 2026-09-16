@@ -6,8 +6,9 @@ import type { CustomField } from '../../lib/database.types'
 import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
-import type { TicketSettings } from '../../components/ticket/ticketTypes'
-import { DEFAULT_TICKET_SETTINGS } from '../../components/ticket/ticketTypes'
+import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -75,6 +76,7 @@ export default function CreateEventPage() {
   const [queueType, setQueueType] = useState<'unlimited' | 'scheduled' | 'group'>(initialIsGroup ? 'group' : 'unlimited')
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
+  const [pageStyleSettings, setPageStyleSettings] = useState<PageStyleSettings>(DEFAULT_PAGE_STYLE_SETTINGS)
   const isGroup = queueType === 'group'
 
   const [slots, setSlots] = useState<SlotInput[]>([
@@ -161,6 +163,7 @@ export default function CreateEventPage() {
             tts_play_chime: ttsPlayChime,
             tts_chime_style: ttsChimeStyle,
             ...ticketSettings,
+            ...pageStyleSettings,
           },
         })
         .select()
@@ -561,9 +564,26 @@ export default function CreateEventPage() {
                 </div>
               )}
 
+              <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
+                <h3 style={{ marginBottom: 'var(--space-2)' }}>🎨 ปรับแต่งหน้าจองคิว (Public Booking Page)</h3>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-4)' }}>
+                  ปรับแต่งสี ขนาดตัวอักษรของหัวข้อและรายละเอียดกิจกรรม รวมถึงสีหรือภาพพื้นหลังหน้าจอง
+                </p>
+                <PageStyleCustomizer
+                  settings={pageStyleSettings}
+                  onChange={setPageStyleSettings}
+                  userId={user?.id}
+                  eventTitle={title}
+                  eventDesc={description}
+                />
+              </div>
+
               {!isGroup && (
                 <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-6)' }}>
-                  <h3 style={{ marginBottom: 'var(--space-4)' }}>🎫 ตั้งค่าบัตรคิวและรูปแบบการแสดงผล</h3>
+                  <h3 style={{ marginBottom: 'var(--space-2)' }}>🎫 ตั้งค่าบัตรคิว (Queue Ticket)</h3>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 'var(--space-4)' }}>
+                    เปิด/ปิดตั๋วคิว ปรับแต่งสี ขนาด หรือภาพพื้นหลังของตั๋วคิวที่ผู้จองจะได้รับ
+                  </p>
                   <TicketCustomizer
                     settings={ticketSettings}
                     onChange={setTicketSettings}
