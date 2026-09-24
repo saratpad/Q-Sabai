@@ -4,6 +4,8 @@ import {
   DEFAULT_PAGE_STYLE_SETTINGS,
   PAGE_TITLE_SIZES,
   PAGE_DESC_SIZES,
+  PAGE_SLOT_HEADER_SIZES,
+  PAGE_SLOT_TIME_SIZES,
   PRESET_TEXT_COLORS,
   PRESET_PAGE_BG_COLORS,
 } from '../ticket/ticketTypes'
@@ -30,9 +32,14 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
+  const defaultSlotHeaderColor = (settings.page_card_theme || DEFAULT_PAGE_STYLE_SETTINGS.page_card_theme) === 'light' ? '#1e293b' : '#f1f5f9'
+  const defaultSlotTimeColor = (settings.page_card_theme || DEFAULT_PAGE_STYLE_SETTINGS.page_card_theme) === 'light' ? '#1e293b' : '#f1f5f9'
+
   // Merge with default settings
   const mergedSettings: Required<PageStyleSettings> = {
     ...DEFAULT_PAGE_STYLE_SETTINGS,
+    page_slot_header_color: defaultSlotHeaderColor,
+    page_slot_time_color: defaultSlotTimeColor,
     ...settings,
   }
 
@@ -43,6 +50,37 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
     onChange({
       ...mergedSettings,
       [key]: value,
+    })
+  }
+
+  const handleThemeChange = (newTheme: 'glass' | 'solid' | 'light') => {
+    const isNewLight = newTheme === 'light'
+    const isOldLight = mergedSettings.page_card_theme === 'light'
+
+    let newHeaderColor = mergedSettings.page_slot_header_color
+    let newTimeColor = mergedSettings.page_slot_time_color
+    let newTitleColor = mergedSettings.page_title_color
+    let newDescColor = mergedSettings.page_desc_color
+
+    if (isNewLight && !isOldLight) {
+      if (newHeaderColor === '#f1f5f9' || newHeaderColor === '#ffffff') newHeaderColor = '#1e293b'
+      if (newTimeColor === '#f1f5f9' || newTimeColor === '#ffffff') newTimeColor = '#1e293b'
+      if (newTitleColor === '#f1f5f9' || newTitleColor === '#ffffff') newTitleColor = '#0f172a'
+      if (newDescColor === '#94a3b8') newDescColor = '#475569'
+    } else if (!isNewLight && isOldLight) {
+      if (newHeaderColor === '#1e293b' || newHeaderColor === '#0f172a' || newHeaderColor === '#000000') newHeaderColor = '#f1f5f9'
+      if (newTimeColor === '#1e293b' || newTimeColor === '#0f172a' || newTimeColor === '#000000') newTimeColor = '#f1f5f9'
+      if (newTitleColor === '#1e293b' || newTitleColor === '#0f172a' || newTitleColor === '#000000') newTitleColor = '#f1f5f9'
+      if (newDescColor === '#475569') newDescColor = '#94a3b8'
+    }
+
+    onChange({
+      ...mergedSettings,
+      page_card_theme: newTheme,
+      page_slot_header_color: newHeaderColor,
+      page_slot_time_color: newTimeColor,
+      page_title_color: newTitleColor,
+      page_desc_color: newDescColor,
     })
   }
 
@@ -85,6 +123,8 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
 
   const titleSizeInfo = PAGE_TITLE_SIZES[mergedSettings.page_title_size] || PAGE_TITLE_SIZES.medium
   const descSizeInfo = PAGE_DESC_SIZES[mergedSettings.page_desc_size] || PAGE_DESC_SIZES.medium
+  const slotHeaderSizeInfo = PAGE_SLOT_HEADER_SIZES[mergedSettings.page_slot_header_size] || PAGE_SLOT_HEADER_SIZES.medium
+  const slotTimeSizeInfo = PAGE_SLOT_TIME_SIZES[mergedSettings.page_slot_time_size] || PAGE_SLOT_TIME_SIZES.medium
 
   return (
     <div className="page-style-customizer">
@@ -211,7 +251,127 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Booking Page Background */}
+          {/* Section 3: Slot Header (หัวข้อเลือกรอบเวลา) */}
+          <div className="page-style-control-group">
+            <div className="page-style-section-title">
+              <span>⏰</span>
+              <span>หัวข้อเลือกรอบเวลา (Slot Header)</span>
+            </div>
+
+            {/* Slot Header Font Size */}
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <label className="page-style-label">
+                <span>ขนาดตัวอักษรหัวข้อรอบเวลา</span>
+                <span style={{ color: 'var(--color-primary)' }}>{slotHeaderSizeInfo.label}</span>
+              </label>
+              <div className="btn-group-segmented" style={{ marginTop: '6px' }}>
+                {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`btn-segmented ${mergedSettings.page_slot_header_size === size ? 'active' : ''}`}
+                    onClick={() => updateSetting('page_slot_header_size', size)}
+                  >
+                    {size === 'small' && 'S (เล็ก)'}
+                    {size === 'medium' && 'M (ปกติ)'}
+                    {size === 'large' && 'L (ใหญ่)'}
+                    {size === 'xlarge' && 'XL (พิเศษ)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Slot Header Color */}
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <label className="page-style-label">
+                <span>สีตัวอักษรหัวข้อรอบเวลา</span>
+                <span className="color-hex-text">{mergedSettings.page_slot_header_color}</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_header_color }}>
+                  <input
+                    type="color"
+                    value={mergedSettings.page_slot_header_color}
+                    onChange={e => updateSetting('page_slot_header_color', e.target.value)}
+                  />
+                </label>
+                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                  {PRESET_TEXT_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      title={c.name}
+                      className={`preset-swatch-btn ${mergedSettings.page_slot_header_color.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => updateSetting('page_slot_header_color', c.color)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Slot Duration / Time (ระยะเวลาของรอบ) */}
+          <div className="page-style-control-group">
+            <div className="page-style-section-title">
+              <span>🕐</span>
+              <span>ระยะเวลาของรอบ (Slot Duration / Time)</span>
+            </div>
+
+            {/* Slot Time Font Size */}
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <label className="page-style-label">
+                <span>ขนาดตัวอักษรระยะเวลารอบ</span>
+                <span style={{ color: 'var(--color-primary)' }}>{slotTimeSizeInfo.label}</span>
+              </label>
+              <div className="btn-group-segmented" style={{ marginTop: '6px' }}>
+                {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`btn-segmented ${mergedSettings.page_slot_time_size === size ? 'active' : ''}`}
+                    onClick={() => updateSetting('page_slot_time_size', size)}
+                  >
+                    {size === 'small' && 'S (เล็ก)'}
+                    {size === 'medium' && 'M (ปกติ)'}
+                    {size === 'large' && 'L (ใหญ่)'}
+                    {size === 'xlarge' && 'XL (พิเศษ)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Slot Time Color */}
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <label className="page-style-label">
+                <span>สีตัวอักษรระยะเวลารอบ</span>
+                <span className="color-hex-text">{mergedSettings.page_slot_time_color}</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_time_color }}>
+                  <input
+                    type="color"
+                    value={mergedSettings.page_slot_time_color}
+                    onChange={e => updateSetting('page_slot_time_color', e.target.value)}
+                  />
+                </label>
+                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                  {PRESET_TEXT_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      title={c.name}
+                      className={`preset-swatch-btn ${mergedSettings.page_slot_time_color.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => updateSetting('page_slot_time_color', c.color)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Booking Page Background */}
           <div className="page-style-control-group">
             <div className="page-style-section-title">
               <span>🎨</span>
@@ -366,21 +526,21 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                 <button
                   type="button"
                   className={`btn-segmented ${mergedSettings.page_card_theme === 'glass' ? 'active' : ''}`}
-                  onClick={() => updateSetting('page_card_theme', 'glass')}
+                  onClick={() => handleThemeChange('glass')}
                 >
                   กระจก (Glass)
                 </button>
                 <button
                   type="button"
                   className={`btn-segmented ${mergedSettings.page_card_theme === 'solid' ? 'active' : ''}`}
-                  onClick={() => updateSetting('page_card_theme', 'solid')}
+                  onClick={() => handleThemeChange('solid')}
                 >
                   ทึบเข้ม (Solid)
                 </button>
                 <button
                   type="button"
                   className={`btn-segmented ${mergedSettings.page_card_theme === 'light' ? 'active' : ''}`}
-                  onClick={() => updateSetting('page_card_theme', 'light')}
+                  onClick={() => handleThemeChange('light')}
                 >
                   โทนสว่าง (Light)
                 </button>
@@ -473,6 +633,58 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                 >
                   {eventDesc || 'รายละเอียดกิจกรรม'}
                 </p>
+              </div>
+
+              {/* Slot Picker Preview */}
+              <div className={`page-preview-event-card theme-${mergedSettings.page_card_theme} page-preview-slot-card-section`}>
+                <div
+                  style={{
+                    fontSize: slotHeaderSizeInfo.fontSize,
+                    fontWeight: 700,
+                    color: mergedSettings.page_slot_header_color,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  เลือกรอบเวลา
+                </div>
+                <div className="page-preview-slot-grid">
+                  <div className="page-preview-slot-card active">
+                    <div
+                      style={{
+                        fontSize: slotTimeSizeInfo.fontSize,
+                        fontWeight: 700,
+                        color: mergedSettings.page_slot_time_color,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      09:30 - 12:00
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                      26 ต.ค.
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
+                      ว่าง 50/50 ที่
+                    </div>
+                  </div>
+                  <div className="page-preview-slot-card">
+                    <div
+                      style={{
+                        fontSize: slotTimeSizeInfo.fontSize,
+                        fontWeight: 700,
+                        color: mergedSettings.page_slot_time_color,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      13:00 - 16:30
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                      26 ต.ค.
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
+                      ว่าง 45/50 ที่
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Booking Form Preview */}

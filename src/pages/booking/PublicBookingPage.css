@@ -44,6 +44,12 @@
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
+.booking-page-container.theme-light .glass-card h1,
+.booking-page-container.theme-light .glass-card h2,
+.booking-page-container.theme-light .glass-card h3 {
+  color: #1e293b;
+}
+
 .booking-page-container.theme-light .form-input,
 .booking-page-container.theme-light .form-select {
   background: #f8fafc;
@@ -58,6 +64,10 @@
 .booking-page-container.theme-light .slot-card {
   background: #f8fafc;
   border-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.booking-page-container.theme-light .slot-time {
   color: #1e293b;
 }
 

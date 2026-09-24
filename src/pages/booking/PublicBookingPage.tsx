@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { TicketCard } from '../../components/ticket/TicketCard'
-import { PAGE_TITLE_SIZES, PAGE_DESC_SIZES } from '../../components/ticket/ticketTypes'
+import { PAGE_TITLE_SIZES, PAGE_DESC_SIZES, PAGE_SLOT_HEADER_SIZES, PAGE_SLOT_TIME_SIZES } from '../../components/ticket/ticketTypes'
 import './PublicBookingPage.css'
 
 export default function PublicBookingPage() {
@@ -385,6 +385,10 @@ export default function PublicBookingPage() {
   const pageTitleSize = pageSettings.page_title_size ? (PAGE_TITLE_SIZES[pageSettings.page_title_size as keyof typeof PAGE_TITLE_SIZES]?.fontSize) : undefined
   const pageDescColor = pageSettings.page_desc_color || undefined
   const pageDescSize = pageSettings.page_desc_size ? (PAGE_DESC_SIZES[pageSettings.page_desc_size as keyof typeof PAGE_DESC_SIZES]?.fontSize) : undefined
+  const pageSlotHeaderColor = pageSettings.page_slot_header_color || (pageSettings.page_card_theme === 'light' ? '#1e293b' : undefined)
+  const pageSlotHeaderSize = pageSettings.page_slot_header_size ? (PAGE_SLOT_HEADER_SIZES[pageSettings.page_slot_header_size as keyof typeof PAGE_SLOT_HEADER_SIZES]?.fontSize) : undefined
+  const pageSlotTimeColor = pageSettings.page_slot_time_color || (pageSettings.page_card_theme === 'light' ? '#1e293b' : undefined)
+  const pageSlotTimeSize = pageSettings.page_slot_time_size ? (PAGE_SLOT_TIME_SIZES[pageSettings.page_slot_time_size as keyof typeof PAGE_SLOT_TIME_SIZES]?.fontSize) : undefined
   const pageBgType = pageSettings.page_bg_type || 'default'
   const pageBgColor = pageSettings.page_bg_color || undefined
   const pageBgImage = pageSettings.page_bg_image || null
@@ -664,7 +668,14 @@ export default function PublicBookingPage() {
           {/* Scheduled: Slot picker */}
           {event.queue_type === 'scheduled' && slots.length > 0 && (
             <div className="booking-section glass-card">
-              <h2>เลือกรอบเวลา</h2>
+              <h2
+                style={{
+                  color: pageSlotHeaderColor,
+                  fontSize: pageSlotHeaderSize,
+                }}
+              >
+                เลือกรอบเวลา
+              </h2>
               <div className="slot-grid">
                 {slots.map(slot => {
                   const isFull = slot.status === 'full' || slot.booked_count >= slot.capacity
@@ -676,7 +687,15 @@ export default function PublicBookingPage() {
                       className={`slot-card ${isFull ? 'slot-card-full' : ''} ${isClosed ? 'slot-card-closed' : ''} ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
                       onClick={() => { if (!isFull && !isClosed) setSelectedSlot(slot) }}
                     >
-                      <div className="slot-time">{slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}</div>
+                      <div
+                        className="slot-time"
+                        style={{
+                          color: pageSlotTimeColor,
+                          fontSize: pageSlotTimeSize,
+                        }}
+                      >
+                        {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                      </div>
                       <div className="slot-capacity">{format(new Date(slot.slot_date), 'dd MMM', { locale: th })}</div>
                       {isFull ? (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-danger-light)', fontWeight: 600 }}>เต็มแล้ว</div>

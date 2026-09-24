@@ -85,6 +85,10 @@ export interface PageStyleSettings {
   page_title_size?: 'small' | 'medium' | 'large' | 'xlarge'
   page_desc_color?: string
   page_desc_size?: 'small' | 'medium' | 'large' | 'xlarge'
+  page_slot_header_color?: string
+  page_slot_header_size?: 'small' | 'medium' | 'large' | 'xlarge'
+  page_slot_time_color?: string
+  page_slot_time_size?: 'small' | 'medium' | 'large' | 'xlarge'
   page_bg_type?: 'default' | 'color' | 'image'
   page_bg_color?: string
   page_bg_image?: string | null
@@ -97,6 +101,10 @@ export const DEFAULT_PAGE_STYLE_SETTINGS: Required<PageStyleSettings> = {
   page_title_size: 'medium',
   page_desc_color: '#94a3b8',
   page_desc_size: 'medium',
+  page_slot_header_color: '#f1f5f9',
+  page_slot_header_size: 'medium',
+  page_slot_time_color: '#f1f5f9',
+  page_slot_time_size: 'medium',
   page_bg_type: 'default',
   page_bg_color: '#0a0f1e',
   page_bg_image: null as any,
@@ -116,6 +124,20 @@ export const PAGE_DESC_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { 
   medium: { label: 'M (ปกติ)', fontSize: '0.9375rem' },
   large: { label: 'L (ใหญ่)', fontSize: '1.125rem' },
   xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.25rem' },
+}
+
+export const PAGE_SLOT_HEADER_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { label: string; fontSize: string }> = {
+  small: { label: 'S (เล็ก)', fontSize: '0.9375rem' },
+  medium: { label: 'M (ปกติ)', fontSize: '1.125rem' },
+  large: { label: 'L (ใหญ่)', fontSize: '1.35rem' },
+  xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.6rem' },
+}
+
+export const PAGE_SLOT_TIME_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { label: string; fontSize: string }> = {
+  small: { label: 'S (เล็ก)', fontSize: '0.875rem' },
+  medium: { label: 'M (ปกติ)', fontSize: '1rem' },
+  large: { label: 'L (ใหญ่)', fontSize: '1.2rem' },
+  xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.4rem' },
 }
 
 export const PRESET_TEXT_COLORS = [
