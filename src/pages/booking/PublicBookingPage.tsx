@@ -9,7 +9,16 @@ import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { TicketCard } from '../../components/ticket/TicketCard'
-import { PAGE_TITLE_SIZES, PAGE_DESC_SIZES, PAGE_SLOT_HEADER_SIZES, PAGE_SLOT_TIME_SIZES } from '../../components/ticket/ticketTypes'
+import type { SlotCardItemKey } from '../../components/ticket/ticketTypes'
+import {
+  PAGE_TITLE_SIZES,
+  PAGE_DESC_SIZES,
+  PAGE_SLOT_HEADER_SIZES,
+  PAGE_SLOT_TIME_SIZES,
+  PAGE_SLOT_DATE_SIZES,
+  PAGE_SLOT_QUOTA_SIZES,
+  PAGE_SLOT_CARD_SIZES,
+} from '../../components/ticket/ticketTypes'
 import { FormattedText } from '../../components/common/FormattedText'
 import './PublicBookingPage.css'
 
@@ -392,6 +401,19 @@ export default function PublicBookingPage() {
   const pageSlotTimeColor = pageSettings.page_slot_time_color || (pageSettings.page_card_theme === 'light' ? '#1e293b' : undefined)
   const pageSlotTimeSize = pageSettings.page_slot_time_size ? (PAGE_SLOT_TIME_SIZES[pageSettings.page_slot_time_size as keyof typeof PAGE_SLOT_TIME_SIZES]?.fontSize) : undefined
   const pageSlotDateColor = pageSettings.page_slot_date_color || (pageSettings.page_card_theme === 'light' ? '#475569' : '#94a3b8')
+  const pageSlotDateSize = pageSettings.page_slot_date_size ? (PAGE_SLOT_DATE_SIZES[pageSettings.page_slot_date_size as keyof typeof PAGE_SLOT_DATE_SIZES]?.fontSize) : undefined
+  const pageSlotQuotaColor = pageSettings.page_slot_quota_color || undefined
+  const pageSlotQuotaSize = pageSettings.page_slot_quota_size ? (PAGE_SLOT_QUOTA_SIZES[pageSettings.page_slot_quota_size as keyof typeof PAGE_SLOT_QUOTA_SIZES]?.fontSize) : undefined
+  const pageSlotCardPadding = pageSettings.page_slot_card_size ? (PAGE_SLOT_CARD_SIZES[pageSettings.page_slot_card_size as keyof typeof PAGE_SLOT_CARD_SIZES]?.padding) : undefined
+
+  const rawSlotOrder = pageSettings.page_slot_order
+  const completeSlotOrder: SlotCardItemKey[] = (() => {
+    const base: SlotCardItemKey[] = ['time', 'date', 'quota']
+    if (!Array.isArray(rawSlotOrder)) return base
+    const valid = rawSlotOrder.filter((k: SlotCardItemKey) => base.includes(k))
+    const remaining = base.filter(k => !valid.includes(k))
+    return [...valid, ...remaining]
+  })()
   const pageBgType = pageSettings.page_bg_type || 'default'
   const pageBgColor = pageSettings.page_bg_color || undefined
   const pageBgImage = pageSettings.page_bg_image || null
@@ -695,30 +717,66 @@ export default function PublicBookingPage() {
                     <div
                       key={slot.id}
                       className={`slot-card ${isFull ? 'slot-card-full' : ''} ${isClosed ? 'slot-card-closed' : ''} ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
+                      style={{ padding: pageSlotCardPadding }}
                       onClick={() => { if (!isFull && !isClosed) setSelectedSlot(slot) }}
                     >
-                      <div
-                        className="slot-time"
-                        style={{
-                          color: pageSlotTimeColor,
-                          fontSize: pageSlotTimeSize,
-                        }}
-                      >
-                        {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                      </div>
-                      <div
-                        className="slot-capacity"
-                        style={{ color: pageSlotDateColor }}
-                      >
-                        {format(new Date(slot.slot_date), 'dd MMM', { locale: th })}
-                      </div>
-                      {isFull ? (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-danger-light)', fontWeight: 600 }}>เต็มแล้ว</div>
-                      ) : isClosed ? (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ปิด</div>
-                      ) : (
-                        <div className="slot-available">ว่าง {available}/{slot.capacity} {slotUnit}</div>
-                      )}
+                      {completeSlotOrder.map((itemKey, idx) => {
+                        if (itemKey === 'time') {
+                          return (
+                            <div
+                              key="time"
+                              className="slot-time"
+                              style={{
+                                color: pageSlotTimeColor,
+                                fontSize: pageSlotTimeSize,
+                                marginTop: idx > 0 ? 'var(--space-1)' : 0,
+                              }}
+                            >
+                              {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                            </div>
+                          )
+                        }
+                        if (itemKey === 'date') {
+                          return (
+                            <div
+                              key="date"
+                              className="slot-capacity"
+                              style={{
+                                color: pageSlotDateColor,
+                                fontSize: pageSlotDateSize,
+                                marginTop: idx > 0 ? 'var(--space-1)' : 0,
+                              }}
+                            >
+                              {format(new Date(slot.slot_date), 'dd MMM', { locale: th })}
+                            </div>
+                          )
+                        }
+                        if (itemKey === 'quota') {
+                          return (
+                            <div
+                              key="quota"
+                              style={{ marginTop: idx > 0 ? 'var(--space-1)' : 0 }}
+                            >
+                              {isFull ? (
+                                <div style={{ fontSize: pageSlotQuotaSize || '0.75rem', color: 'var(--color-danger-light)', fontWeight: 600 }}>เต็มแล้ว</div>
+                              ) : isClosed ? (
+                                <div style={{ fontSize: pageSlotQuotaSize || '0.75rem', color: 'var(--color-text-muted)' }}>ปิด</div>
+                              ) : (
+                                <div
+                                  className="slot-available"
+                                  style={{
+                                    fontSize: pageSlotQuotaSize,
+                                    color: pageSlotQuotaColor,
+                                  }}
+                                >
+                                  ว่าง {available}/{slot.capacity} {slotUnit}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        }
+                        return null
+                      })}
                     </div>
                   )
                 })}

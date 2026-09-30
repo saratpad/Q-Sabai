@@ -1,11 +1,14 @@
 import React, { useState, useRef } from 'react'
-import type { PageStyleSettings } from '../ticket/ticketTypes'
+import type { PageStyleSettings, SlotCardItemKey } from '../ticket/ticketTypes'
 import {
   DEFAULT_PAGE_STYLE_SETTINGS,
   PAGE_TITLE_SIZES,
   PAGE_DESC_SIZES,
   PAGE_SLOT_HEADER_SIZES,
   PAGE_SLOT_TIME_SIZES,
+  PAGE_SLOT_DATE_SIZES,
+  PAGE_SLOT_QUOTA_SIZES,
+  PAGE_SLOT_CARD_SIZES,
   PRESET_TEXT_COLORS,
   PRESET_PAGE_BG_COLORS,
   PRESET_SLOT_UNITS,
@@ -63,17 +66,20 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
     let newTimeColor = mergedSettings.page_slot_time_color
     let newTitleColor = mergedSettings.page_title_color
     let newDescColor = mergedSettings.page_desc_color
+    let newDateColor = mergedSettings.page_slot_date_color
 
     if (isNewLight && !isOldLight) {
       if (newHeaderColor === '#f1f5f9' || newHeaderColor === '#ffffff') newHeaderColor = '#1e293b'
       if (newTimeColor === '#f1f5f9' || newTimeColor === '#ffffff') newTimeColor = '#1e293b'
       if (newTitleColor === '#f1f5f9' || newTitleColor === '#ffffff') newTitleColor = '#0f172a'
       if (newDescColor === '#94a3b8') newDescColor = '#475569'
+      if (newDateColor === '#94a3b8') newDateColor = '#475569'
     } else if (!isNewLight && isOldLight) {
       if (newHeaderColor === '#1e293b' || newHeaderColor === '#0f172a' || newHeaderColor === '#000000') newHeaderColor = '#f1f5f9'
       if (newTimeColor === '#1e293b' || newTimeColor === '#0f172a' || newTimeColor === '#000000') newTimeColor = '#f1f5f9'
       if (newTitleColor === '#1e293b' || newTitleColor === '#0f172a' || newTitleColor === '#000000') newTitleColor = '#f1f5f9'
       if (newDescColor === '#475569') newDescColor = '#94a3b8'
+      if (newDateColor === '#475569') newDateColor = '#94a3b8'
     }
 
     onChange({
@@ -83,6 +89,7 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
       page_slot_time_color: newTimeColor,
       page_title_color: newTitleColor,
       page_desc_color: newDescColor,
+      page_slot_date_color: newDateColor,
     })
   }
 
@@ -127,6 +134,64 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
   const descSizeInfo = PAGE_DESC_SIZES[mergedSettings.page_desc_size] || PAGE_DESC_SIZES.medium
   const slotHeaderSizeInfo = PAGE_SLOT_HEADER_SIZES[mergedSettings.page_slot_header_size] || PAGE_SLOT_HEADER_SIZES.medium
   const slotTimeSizeInfo = PAGE_SLOT_TIME_SIZES[mergedSettings.page_slot_time_size] || PAGE_SLOT_TIME_SIZES.medium
+  const slotDateSizeInfo = PAGE_SLOT_DATE_SIZES[mergedSettings.page_slot_date_size] || PAGE_SLOT_DATE_SIZES.small
+  const slotQuotaSizeInfo = PAGE_SLOT_QUOTA_SIZES[mergedSettings.page_slot_quota_size] || PAGE_SLOT_QUOTA_SIZES.small
+  const slotCardSizeInfo = PAGE_SLOT_CARD_SIZES[mergedSettings.page_slot_card_size] || PAGE_SLOT_CARD_SIZES.medium
+
+  // Compute resolved slot items order
+  const currentSlotOrder: SlotCardItemKey[] = (() => {
+    const raw = mergedSettings.page_slot_order
+    const base: SlotCardItemKey[] = ['time', 'date', 'quota']
+    if (!Array.isArray(raw)) return base
+    const valid = raw.filter((k): k is SlotCardItemKey => base.includes(k))
+    const remaining = base.filter(k => !valid.includes(k))
+    return [...valid, ...remaining]
+  })()
+
+  const moveSlotItem = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...currentSlotOrder]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return
+    const temp = newOrder[index]
+    newOrder[index] = newOrder[targetIndex]
+    newOrder[targetIndex] = temp
+    updateSetting('page_slot_order', newOrder)
+  }
+
+  const setSlotItemPosition = (itemKey: SlotCardItemKey, targetPosition: number) => {
+    const filtered = currentSlotOrder.filter(k => k !== itemKey)
+    filtered.splice(targetPosition, 0, itemKey)
+    updateSetting('page_slot_order', filtered)
+  }
+
+  const ITEM_DEFINITIONS: Record<SlotCardItemKey, { title: string; icon: string; previewText: string; desc: string }> = {
+    time: {
+      title: 'เวลารอบ (Time)',
+      icon: '⏰',
+      previewText: '09:30 - 12:00',
+      desc: 'เวลาเริ่ม - สิ้นสุดของรอบ',
+    },
+    date: {
+      title: 'วันที่ (Date)',
+      icon: '📅',
+      previewText: '26 ต.ค.',
+      desc: 'วันของรอบการจอง',
+    },
+    quota: {
+      title: 'จำนวนคงเหลือ (Remaining)',
+      icon: '👥',
+      previewText: `ว่าง 50/50 ${mergedSettings.slot_unit || 'ที่'}`,
+      desc: 'จำนวนที่ว่างหรือสถานะเต็ม',
+    },
+  }
+
+  const ORDER_PRESETS: { label: string; order: SlotCardItemKey[] }[] = [
+    { label: '⏰ เวลา ➔ 📅 วัน ➔ 👥 จำนวนคงเหลือ', order: ['time', 'date', 'quota'] },
+    { label: '📅 วัน ➔ ⏰ เวลา ➔ 👥 จำนวนคงเหลือ', order: ['date', 'time', 'quota'] },
+    { label: '⏰ เวลา ➔ 👥 จำนวนคงเหลือ ➔ 📅 วัน', order: ['time', 'quota', 'date'] },
+    { label: '📅 วัน ➔ 👥 จำนวนคงเหลือ ➔ ⏰ เวลา', order: ['date', 'quota', 'time'] },
+    { label: '👥 จำนวนคงเหลือ ➔ ⏰ เวลา ➔ 📅 วัน', order: ['quota', 'time', 'date'] },
+  ]
 
   return (
     <div className="page-style-customizer">
@@ -313,121 +378,321 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Slot Duration / Time (ระยะเวลาของรอบ) */}
+          {/* Section 4: Slot Card Content & Style (การ์ดรอบเวลา) */}
           <div className="page-style-control-group">
             <div className="page-style-section-title">
-              <span>🕐</span>
-              <span>ระยะเวลาของรอบ (Slot Duration / Time)</span>
+              <span>⏰</span>
+              <span>การ์ดรอบเวลา (Slot Card Customization)</span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+              ปรับลำดับการแสดงผล (วัน, เวลา, หรือจำนวนคงเหลือ) กำหนดขนาดตัวอักษร และขนาดของการ์ดรอบเวลาได้ตามต้องการ
             </div>
 
-            {/* Slot Time Font Size */}
+            {/* Sub-section A: Reordering Slot Items */}
             <div style={{ marginTop: 'var(--space-2)' }}>
               <label className="page-style-label">
-                <span>ขนาดตัวอักษรระยะเวลารอบ</span>
-                <span style={{ color: 'var(--color-primary)' }}>{slotTimeSizeInfo.label}</span>
+                <span>ลำดับการแสดงผลในการ์ดรอบเวลา</span>
+                <span style={{ color: 'var(--color-primary)', fontSize: '0.75rem' }}>
+                  {currentSlotOrder.map(k => k === 'time' ? 'เวลา' : k === 'date' ? 'วัน' : 'คงเหลือ').join(' ➔ ')}
+                </span>
+              </label>
+
+              <div className="slot-order-list">
+                {currentSlotOrder.map((key, idx) => {
+                  const def = ITEM_DEFINITIONS[key]
+                  return (
+                    <div key={key} className="slot-order-item">
+                      <div className="slot-order-item-left">
+                        <span className="slot-order-badge">ลำดับที่ {idx + 1}</span>
+                        <div>
+                          <div className="slot-order-item-name">
+                            <span>{def.icon}</span>
+                            <span>{def.title}</span>
+                          </div>
+                          <div className="slot-order-item-example">
+                            ตัวอย่าง: {def.previewText}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="slot-order-actions">
+                        <select
+                          className="slot-order-select"
+                          value={idx}
+                          onChange={e => setSlotItemPosition(key, parseInt(e.target.value))}
+                          aria-label={`เลือกลำดับของ ${def.title}`}
+                        >
+                          <option value={0}>อันดับ 1</option>
+                          <option value={1}>อันดับ 2</option>
+                          <option value={2}>อันดับ 3</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="slot-order-btn"
+                          disabled={idx === 0}
+                          onClick={() => moveSlotItem(idx, 'up')}
+                          title="เลื่อนขึ้น"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          className="slot-order-btn"
+                          disabled={idx === currentSlotOrder.length - 1}
+                          onClick={() => moveSlotItem(idx, 'down')}
+                          title="เลื่อนลง"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Quick Presets */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+                  จัดลำดับรวดเร็ว (Quick Presets):
+                </div>
+                <div className="slot-order-presets">
+                  {ORDER_PRESETS.map((preset, pIdx) => {
+                    const isPresetActive = preset.order.every((k, i) => currentSlotOrder[i] === k)
+                    return (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        className={`slot-order-preset-btn ${isPresetActive ? 'active' : ''}`}
+                        onClick={() => updateSetting('page_slot_order', [...preset.order])}
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-section B: Slot Card Size / Padding */}
+            <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <label className="page-style-label">
+                <span>ขนาดของการ์ดรอบเวลา (Card Size)</span>
+                <span style={{ color: 'var(--color-primary)' }}>{slotCardSizeInfo.label}</span>
               </label>
               <div className="btn-group-segmented" style={{ marginTop: '6px' }}>
-                {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                {(['small', 'medium', 'large'] as const).map(size => (
                   <button
                     key={size}
                     type="button"
-                    className={`btn-segmented ${mergedSettings.page_slot_time_size === size ? 'active' : ''}`}
-                    onClick={() => updateSetting('page_slot_time_size', size)}
+                    className={`btn-segmented ${mergedSettings.page_slot_card_size === size ? 'active' : ''}`}
+                    onClick={() => updateSetting('page_slot_card_size', size)}
                   >
-                    {size === 'small' && 'S (เล็ก)'}
+                    {size === 'small' && 'S (กะทัดรัด)'}
                     {size === 'medium' && 'M (ปกติ)'}
-                    {size === 'large' && 'L (ใหญ่)'}
-                    {size === 'xlarge' && 'XL (พิเศษ)'}
+                    {size === 'large' && 'L (ใหญ่โปร่ง)'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Slot Time Color */}
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              <label className="page-style-label">
-                <span>สีตัวอักษรระยะเวลารอบ</span>
-                <span className="color-hex-text">{mergedSettings.page_slot_time_color}</span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_time_color }}>
-                  <input
-                    type="color"
-                    value={mergedSettings.page_slot_time_color}
-                    onChange={e => updateSetting('page_slot_time_color', e.target.value)}
-                  />
-                </label>
-                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
-                  {PRESET_TEXT_COLORS.map(c => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      title={c.name}
-                      className={`preset-swatch-btn ${mergedSettings.page_slot_time_color.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
-                      style={{ backgroundColor: c.color }}
-                      onClick={() => updateSetting('page_slot_time_color', c.color)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Slot Date Color */}
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              <label className="page-style-label">
-                <span>สีวันที่ใต้รอบเวลา</span>
-                <span className="color-hex-text">{mergedSettings.page_slot_date_color || '#94a3b8'}</span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_date_color || '#94a3b8' }}>
-                  <input
-                    type="color"
-                    value={mergedSettings.page_slot_date_color || '#94a3b8'}
-                    onChange={e => updateSetting('page_slot_date_color', e.target.value)}
-                  />
-                </label>
-                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
-                  {PRESET_TEXT_COLORS.map(c => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      title={c.name}
-                      className={`preset-swatch-btn ${(mergedSettings.page_slot_date_color || '#94a3b8').toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
-                      style={{ backgroundColor: c.color }}
-                      onClick={() => updateSetting('page_slot_date_color', c.color)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Slot Unit (หน่วยของจำนวนที่ว่าง) */}
+            {/* Sub-section C: Element Details (Sizes & Colors) */}
             <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <label className="page-style-label">
-                <span>หน่วยของจำนวนที่ว่าง (เช่น คน, หน่วยงาน, ที่นั่ง)</span>
-                <span style={{ color: 'var(--color-primary)' }}>{mergedSettings.slot_unit || 'ที่'}</span>
-              </label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  style={{ maxWidth: '140px', padding: '6px 10px', fontSize: '0.875rem' }}
-                  placeholder="เช่น คน, หน่วยงาน"
-                  value={mergedSettings.slot_unit || ''}
-                  onChange={e => updateSetting('slot_unit', e.target.value)}
-                />
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {PRESET_SLOT_UNITS.map(unit => (
-                    <button
-                      key={unit}
-                      type="button"
-                      className={`btn btn-sm ${mergedSettings.slot_unit === unit ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ padding: '3px 8px', fontSize: '0.75rem', borderRadius: '4px' }}
-                      onClick={() => updateSetting('slot_unit', unit)}
-                    >
-                      {unit}
-                    </button>
-                  ))}
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '8px' }}>
+                🎨 ปรับขนาดตัวอักษรและสีของแต่ละส่วน
+              </div>
+
+              {/* 1. Slot Time */}
+              <div className="slot-style-subcard">
+                <div className="slot-style-subcard-header">
+                  <span>⏰ 1. เวลารอบ (Slot Time)</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }}>{slotTimeSizeInfo.label}</span>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>ขนาดตัวอักษรเวลารอบ</span>
+                  </label>
+                  <div className="btn-group-segmented" style={{ marginTop: '4px' }}>
+                    {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`btn-segmented ${mergedSettings.page_slot_time_size === size ? 'active' : ''}`}
+                        onClick={() => updateSetting('page_slot_time_size', size)}
+                      >
+                        {size === 'small' && 'S (เล็ก)'}
+                        {size === 'medium' && 'M (ปกติ)'}
+                        {size === 'large' && 'L (ใหญ่)'}
+                        {size === 'xlarge' && 'XL (พิเศษ)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>สีตัวอักษรเวลารอบ</span>
+                    <span className="color-hex-text">{mergedSettings.page_slot_time_color}</span>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_time_color }}>
+                      <input
+                        type="color"
+                        value={mergedSettings.page_slot_time_color}
+                        onChange={e => updateSetting('page_slot_time_color', e.target.value)}
+                      />
+                    </label>
+                    <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                      {PRESET_TEXT_COLORS.map(c => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          className={`preset-swatch-btn ${mergedSettings.page_slot_time_color.toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                          style={{ backgroundColor: c.color }}
+                          onClick={() => updateSetting('page_slot_time_color', c.color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Slot Date */}
+              <div className="slot-style-subcard">
+                <div className="slot-style-subcard-header">
+                  <span>📅 2. วันที่ (Slot Date)</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }}>{slotDateSizeInfo.label}</span>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>ขนาดตัวอักษรวันที่</span>
+                  </label>
+                  <div className="btn-group-segmented" style={{ marginTop: '4px' }}>
+                    {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`btn-segmented ${mergedSettings.page_slot_date_size === size ? 'active' : ''}`}
+                        onClick={() => updateSetting('page_slot_date_size', size)}
+                      >
+                        {size === 'small' && 'S (เล็ก)'}
+                        {size === 'medium' && 'M (ปกติ)'}
+                        {size === 'large' && 'L (ใหญ่)'}
+                        {size === 'xlarge' && 'XL (พิเศษ)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>สีตัวอักษรวันที่</span>
+                    <span className="color-hex-text">{mergedSettings.page_slot_date_color || '#94a3b8'}</span>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_date_color || '#94a3b8' }}>
+                      <input
+                        type="color"
+                        value={mergedSettings.page_slot_date_color || '#94a3b8'}
+                        onChange={e => updateSetting('page_slot_date_color', e.target.value)}
+                      />
+                    </label>
+                    <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                      {PRESET_TEXT_COLORS.map(c => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          className={`preset-swatch-btn ${(mergedSettings.page_slot_date_color || '#94a3b8').toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                          style={{ backgroundColor: c.color }}
+                          onClick={() => updateSetting('page_slot_date_color', c.color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Slot Quota / Available */}
+              <div className="slot-style-subcard">
+                <div className="slot-style-subcard-header">
+                  <span>👥 3. จำนวนคงเหลือ (Quota / Remaining)</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }}>{slotQuotaSizeInfo.label}</span>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>ขนาดตัวอักษรจำนวนคงเหลือ</span>
+                  </label>
+                  <div className="btn-group-segmented" style={{ marginTop: '4px' }}>
+                    {(['small', 'medium', 'large', 'xlarge'] as const).map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`btn-segmented ${mergedSettings.page_slot_quota_size === size ? 'active' : ''}`}
+                        onClick={() => updateSetting('page_slot_quota_size', size)}
+                      >
+                        {size === 'small' && 'S (เล็ก)'}
+                        {size === 'medium' && 'M (ปกติ)'}
+                        {size === 'large' && 'L (ใหญ่)'}
+                        {size === 'xlarge' && 'XL (พิเศษ)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="page-style-label">
+                    <span>สีตัวอักษรจำนวนคงเหลือ</span>
+                    <span className="color-hex-text">{mergedSettings.page_slot_quota_color || '#10b981'}</span>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_quota_color || '#10b981' }}>
+                      <input
+                        type="color"
+                        value={mergedSettings.page_slot_quota_color || '#10b981'}
+                        onChange={e => updateSetting('page_slot_quota_color', e.target.value)}
+                      />
+                    </label>
+                    <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                      {PRESET_TEXT_COLORS.map(c => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          className={`preset-swatch-btn ${(mergedSettings.page_slot_quota_color || '#10b981').toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                          style={{ backgroundColor: c.color }}
+                          onClick={() => updateSetting('page_slot_quota_color', c.color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slot Unit */}
+                <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                  <label className="page-style-label">
+                    <span>หน่วยของจำนวนที่ว่าง (เช่น คน, หน่วยงาน, ที่นั่ง)</span>
+                    <span style={{ color: 'var(--color-primary)' }}>{mergedSettings.slot_unit || 'ที่'}</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ maxWidth: '140px', padding: '6px 10px', fontSize: '0.875rem' }}
+                      placeholder="เช่น คน, หน่วยงาน"
+                      value={mergedSettings.slot_unit || ''}
+                      onChange={e => updateSetting('slot_unit', e.target.value)}
+                    />
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {PRESET_SLOT_UNITS.map(unit => (
+                        <button
+                          key={unit}
+                          type="button"
+                          className={`btn btn-sm ${mergedSettings.slot_unit === unit ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ padding: '3px 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                          onClick={() => updateSetting('slot_unit', unit)}
+                        >
+                          {unit}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -777,41 +1042,124 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                   เลือกรอบเวลา
                 </div>
                 <div className="page-preview-slot-grid">
-                  <div className="page-preview-slot-card active">
-                    <div
-                      style={{
-                        fontSize: slotTimeSizeInfo.fontSize,
-                        fontWeight: 700,
-                        color: mergedSettings.page_slot_time_color,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      09:30 - 12:00
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', color: mergedSettings.page_slot_date_color || '#94a3b8', marginTop: '2px' }}>
-                      26 ต.ค.
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
-                      ว่าง 50/50 {mergedSettings.slot_unit || 'ที่'}
-                    </div>
+                  {/* Slot 1: Active */}
+                  <div
+                    className="page-preview-slot-card active"
+                    style={{
+                      padding: mergedSettings.page_slot_card_size === 'small' ? '6px 8px' : mergedSettings.page_slot_card_size === 'large' ? '12px 14px' : '8px 10px',
+                    }}
+                  >
+                    {currentSlotOrder.map((key, idx) => {
+                      if (key === 'time') {
+                        return (
+                          <div
+                            key="time"
+                            style={{
+                              fontSize: slotTimeSizeInfo.fontSize,
+                              fontWeight: 700,
+                              color: mergedSettings.page_slot_time_color,
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                            }}
+                          >
+                            09:30 - 12:00
+                          </div>
+                        )
+                      }
+                      if (key === 'date') {
+                        return (
+                          <div
+                            key="date"
+                            style={{
+                              fontSize: slotDateSizeInfo.fontSize,
+                              color: mergedSettings.page_slot_date_color || '#94a3b8',
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                              fontWeight: 500,
+                            }}
+                          >
+                            26 ต.ค.
+                          </div>
+                        )
+                      }
+                      if (key === 'quota') {
+                        return (
+                          <div
+                            key="quota"
+                            style={{
+                              fontSize: slotQuotaSizeInfo.fontSize,
+                              fontWeight: 600,
+                              color: mergedSettings.page_slot_quota_color || '#10b981',
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                            }}
+                          >
+                            ว่าง 50/50 {mergedSettings.slot_unit || 'ที่'}
+                          </div>
+                        )
+                      }
+                      return null
+                    })}
                   </div>
-                  <div className="page-preview-slot-card">
-                    <div
-                      style={{
-                        fontSize: slotTimeSizeInfo.fontSize,
-                        fontWeight: 700,
-                        color: mergedSettings.page_slot_time_color,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      13:00 - 16:30
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', color: mergedSettings.page_slot_date_color || '#94a3b8', marginTop: '2px' }}>
-                      26 ต.ค.
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
-                      ว่าง 45/50 {mergedSettings.slot_unit || 'ที่'}
-                    </div>
+
+                  {/* Slot 2: Normal */}
+                  <div
+                    className="page-preview-slot-card"
+                    style={{
+                      padding: mergedSettings.page_slot_card_size === 'small' ? '6px 8px' : mergedSettings.page_slot_card_size === 'large' ? '12px 14px' : '8px 10px',
+                    }}
+                  >
+                    {currentSlotOrder.map((key, idx) => {
+                      if (key === 'time') {
+                        return (
+                          <div
+                            key="time"
+                            style={{
+                              fontSize: slotTimeSizeInfo.fontSize,
+                              fontWeight: 700,
+                              color: mergedSettings.page_slot_time_color,
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                            }}
+                          >
+                            13:00 - 16:30
+                          </div>
+                        )
+                      }
+                      if (key === 'date') {
+                        return (
+                          <div
+                            key="date"
+                            style={{
+                              fontSize: slotDateSizeInfo.fontSize,
+                              color: mergedSettings.page_slot_date_color || '#94a3b8',
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                              fontWeight: 500,
+                            }}
+                          >
+                            26 ต.ค.
+                          </div>
+                        )
+                      }
+                      if (key === 'quota') {
+                        return (
+                          <div
+                            key="quota"
+                            style={{
+                              fontSize: slotQuotaSizeInfo.fontSize,
+                              fontWeight: 600,
+                              color: mergedSettings.page_slot_quota_color || '#10b981',
+                              lineHeight: 1.25,
+                              marginTop: idx > 0 ? '3px' : 0,
+                            }}
+                          >
+                            ว่าง 45/50 {mergedSettings.slot_unit || 'ที่'}
+                          </div>
+                        )
+                      }
+                      return null
+                    })}
                   </div>
                 </div>
               </div>

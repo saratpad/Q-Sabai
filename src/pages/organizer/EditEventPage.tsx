@@ -100,6 +100,7 @@ export default function EditEventPage() {
           ticket_font_size: ts.ticket_font_size || 'medium',
         })
         setPageStyleSettings({
+          ...DEFAULT_PAGE_STYLE_SETTINGS,
           page_title_color: ts.page_title_color || '#f1f5f9',
           page_title_size: ts.page_title_size || 'medium',
           page_desc_color: ts.page_desc_color || '#94a3b8',
@@ -109,6 +110,11 @@ export default function EditEventPage() {
           page_slot_time_color: ts.page_slot_time_color || (ts.page_card_theme === 'light' ? '#1e293b' : '#f1f5f9'),
           page_slot_time_size: ts.page_slot_time_size || 'medium',
           page_slot_date_color: ts.page_slot_date_color || (ts.page_card_theme === 'light' ? '#475569' : '#94a3b8'),
+          page_slot_date_size: ts.page_slot_date_size || 'small',
+          page_slot_quota_color: ts.page_slot_quota_color || '#10b981',
+          page_slot_quota_size: ts.page_slot_quota_size || 'small',
+          page_slot_order: Array.isArray(ts.page_slot_order) && ts.page_slot_order.length > 0 ? ts.page_slot_order : ['time', 'date', 'quota'],
+          page_slot_card_size: ts.page_slot_card_size || 'medium',
           page_bg_type: ts.page_bg_type || 'default',
           page_bg_color: ts.page_bg_color || '#0a0f1e',
           page_bg_image: ts.page_bg_image || null,

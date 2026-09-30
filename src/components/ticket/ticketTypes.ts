@@ -80,6 +80,8 @@ export const FONT_SIZE_MAP = {
 // ==========================================
 // Public Booking Page Customization Types
 // ==========================================
+export type SlotCardItemKey = 'time' | 'date' | 'quota'
+
 export interface PageStyleSettings {
   page_title_color?: string
   page_title_size?: 'small' | 'medium' | 'large' | 'xlarge'
@@ -90,6 +92,11 @@ export interface PageStyleSettings {
   page_slot_time_color?: string
   page_slot_time_size?: 'small' | 'medium' | 'large' | 'xlarge'
   page_slot_date_color?: string // สีวันที่ใต้รอบเวลา
+  page_slot_date_size?: 'small' | 'medium' | 'large' | 'xlarge' // ขนาดตัวอักษรวันที่
+  page_slot_quota_color?: string // สีตัวอักษรจำนวนคงเหลือ
+  page_slot_quota_size?: 'small' | 'medium' | 'large' | 'xlarge' // ขนาดตัวอักษรจำนวนคงเหลือ
+  page_slot_order?: SlotCardItemKey[] // ลำดับการแสดงผลในการ์ดรอบเวลา เช่น ['time', 'date', 'quota'] หรือ ['date', 'time', 'quota']
+  page_slot_card_size?: 'small' | 'medium' | 'large' // ขนาดของการ์ดรอบเวลา (padding)
   page_bg_type?: 'default' | 'color' | 'image'
   page_bg_color?: string
   page_bg_image?: string | null
@@ -110,6 +117,11 @@ export const DEFAULT_PAGE_STYLE_SETTINGS: Required<PageStyleSettings> = {
   page_slot_time_color: '#f1f5f9',
   page_slot_time_size: 'medium',
   page_slot_date_color: '#94a3b8',
+  page_slot_date_size: 'small',
+  page_slot_quota_color: '#10b981',
+  page_slot_quota_size: 'small',
+  page_slot_order: ['time', 'date', 'quota'],
+  page_slot_card_size: 'medium',
   page_bg_type: 'default',
   page_bg_color: '#0a0f1e',
   page_bg_image: null as any,
@@ -156,6 +168,26 @@ export const PAGE_SLOT_TIME_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge
   medium: { label: 'M (ปกติ)', fontSize: '1rem' },
   large: { label: 'L (ใหญ่)', fontSize: '1.2rem' },
   xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.4rem' },
+}
+
+export const PAGE_SLOT_DATE_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { label: string; fontSize: string }> = {
+  small: { label: 'S (เล็ก)', fontSize: '0.75rem' },
+  medium: { label: 'M (ปกติ)', fontSize: '0.875rem' },
+  large: { label: 'L (ใหญ่)', fontSize: '1.05rem' },
+  xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.25rem' },
+}
+
+export const PAGE_SLOT_QUOTA_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { label: string; fontSize: string }> = {
+  small: { label: 'S (เล็ก)', fontSize: '0.75rem' },
+  medium: { label: 'M (ปกติ)', fontSize: '0.8125rem' },
+  large: { label: 'L (ใหญ่)', fontSize: '0.95rem' },
+  xlarge: { label: 'XL (ใหญ่พิเศษ)', fontSize: '1.1rem' },
+}
+
+export const PAGE_SLOT_CARD_SIZES: Record<'small' | 'medium' | 'large', { label: string; padding: string }> = {
+  small: { label: 'S (กะทัดรัด)', padding: '10px 12px' },
+  medium: { label: 'M (ปกติ)', padding: '16px 14px' },
+  large: { label: 'L (ใหญ่โปร่ง)', padding: '22px 18px' },
 }
 
 export const PRESET_TEXT_COLORS = [
