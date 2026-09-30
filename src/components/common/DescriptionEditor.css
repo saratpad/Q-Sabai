@@ -1,0 +1,108 @@
+.desc-editor-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.desc-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 6px 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.desc-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.desc-toolbar-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+}
+
+.desc-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.desc-toolbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.desc-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.desc-tab-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.desc-tab-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.desc-editor-textarea {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  width: 100%;
+  min-height: 120px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.desc-editor-preview {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: var(--space-4);
+  min-height: 120px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.desc-editor-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

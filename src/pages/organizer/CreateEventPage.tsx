@@ -7,8 +7,9 @@ import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
 import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import { DescriptionEditor } from '../../components/common/DescriptionEditor'
 import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
-import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS, PRESET_SLOT_UNITS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -77,6 +78,7 @@ export default function CreateEventPage() {
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
   const [pageStyleSettings, setPageStyleSettings] = useState<PageStyleSettings>(DEFAULT_PAGE_STYLE_SETTINGS)
+  const [slotUnit, setSlotUnit] = useState('ที่')
   const isGroup = queueType === 'group'
 
   const [slots, setSlots] = useState<SlotInput[]>([
@@ -162,6 +164,7 @@ export default function CreateEventPage() {
             tts_ending_word: ttsEndingWord.trim(),
             tts_play_chime: ttsPlayChime,
             tts_chime_style: ttsChimeStyle,
+            slot_unit: slotUnit.trim() || pageStyleSettings.slot_unit || 'ที่',
             ...ticketSettings,
             ...pageStyleSettings,
           },
@@ -287,15 +290,10 @@ export default function CreateEventPage() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">รายละเอียด</label>
-                  <textarea
-                    className="form-input form-textarea"
-                    placeholder="รายละเอียดเพิ่มเติม เช่น สถานที่ เงื่อนไขการใช้บริการ..."
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                  />
-                </div>
+                <DescriptionEditor
+                  value={description}
+                  onChange={setDescription}
+                />
 
                 {!isGroup && (
                   <>
@@ -485,6 +483,47 @@ export default function CreateEventPage() {
                     <h3>กำหนดรอบเวลา</h3>
                     <button className="btn btn-secondary btn-sm" onClick={addSlot}>+ เพิ่มรอบ</button>
                   </div>
+
+                  {/* Slot Unit Customization */}
+                  <div className="form-group" style={{ marginBottom: 'var(--space-5)', padding: '14px 16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <label className="form-label" style={{ fontWeight: 600, marginBottom: '8px' }}>
+                      หน่วยนับของจำนวนที่ว่าง / รับ
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        style={{ maxWidth: '160px' }}
+                        placeholder="เช่น คน, หน่วยงาน"
+                        value={slotUnit}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSlotUnit(val)
+                          setPageStyleSettings(prev => ({ ...prev, slot_unit: val }))
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {PRESET_SLOT_UNITS.map(unit => (
+                          <button
+                            key={unit}
+                            type="button"
+                            className={`btn btn-sm ${slotUnit === unit ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ fontSize: '0.8125rem', padding: '4px 10px' }}
+                            onClick={() => {
+                              setSlotUnit(unit)
+                              setPageStyleSettings(prev => ({ ...prev, slot_unit: unit }))
+                            }}
+                          >
+                            {unit}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
+                      หน่วยนี้จะแสดงในตารางด้านล่างและบนหน้ารับจอง เช่น "ว่าง 10/10 {slotUnit || 'คน'}"
+                    </span>
+                  </div>
+
                   {slots.map((slot, idx) => (
                     <div key={slot.id} className="slot-input-row">
                       <span className="slot-number">รอบ {idx + 1}</span>
@@ -506,8 +545,8 @@ export default function CreateEventPage() {
                         <label className="form-label">สิ้นสุด</label>
                         <TimePicker value={slot.end_time} onChange={v => updateSlot(slot.id, 'end_time', v)} />
                       </div>
-                      <div className="form-group" style={{ width: '90px' }}>
-                        <label className="form-label">รับ (คน)</label>
+                      <div className="form-group" style={{ width: '100px' }}>
+                        <label className="form-label">รับ ({slotUnit || 'คน'})</label>
                         <input type="number" className="form-input" min={1} value={slot.capacity} onChange={e => updateSlot(slot.id, 'capacity', parseInt(e.target.value))} />
                       </div>
                       {slots.length > 1 && (
@@ -571,7 +610,12 @@ export default function CreateEventPage() {
                 </p>
                 <PageStyleCustomizer
                   settings={pageStyleSettings}
-                  onChange={setPageStyleSettings}
+                  onChange={newSettings => {
+                    setPageStyleSettings(newSettings)
+                    if (newSettings.slot_unit !== undefined) {
+                      setSlotUnit(newSettings.slot_unit)
+                    }
+                  }}
                   userId={user?.id}
                   eventTitle={title}
                   eventDesc={description}

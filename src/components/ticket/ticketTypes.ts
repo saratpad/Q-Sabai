@@ -89,11 +89,15 @@ export interface PageStyleSettings {
   page_slot_header_size?: 'small' | 'medium' | 'large' | 'xlarge'
   page_slot_time_color?: string
   page_slot_time_size?: 'small' | 'medium' | 'large' | 'xlarge'
+  page_slot_date_color?: string // สีวันที่ใต้รอบเวลา
   page_bg_type?: 'default' | 'color' | 'image'
   page_bg_color?: string
   page_bg_image?: string | null
   page_bg_overlay?: number // 0-100%
   page_card_theme?: 'glass' | 'solid' | 'light' | 'dark'
+  page_form_label_color?: string // สี label ในฟอร์มลงทะเบียน
+  page_form_label_weight?: 'normal' | 'medium' | 'semibold' | 'bold' // ความเข้ม label
+  slot_unit?: string // หน่วยของจำนวนที่ว่าง/รับ เช่น 'คน', 'หน่วยงาน', 'ที่นั่ง'
 }
 
 export const DEFAULT_PAGE_STYLE_SETTINGS: Required<PageStyleSettings> = {
@@ -105,12 +109,26 @@ export const DEFAULT_PAGE_STYLE_SETTINGS: Required<PageStyleSettings> = {
   page_slot_header_size: 'medium',
   page_slot_time_color: '#f1f5f9',
   page_slot_time_size: 'medium',
+  page_slot_date_color: '#94a3b8',
   page_bg_type: 'default',
   page_bg_color: '#0a0f1e',
   page_bg_image: null as any,
   page_bg_overlay: 30,
   page_card_theme: 'glass',
+  page_form_label_color: '#cbd5e1',
+  page_form_label_weight: 'medium',
+  slot_unit: 'ที่',
 }
+
+export const PRESET_SLOT_UNITS = [
+  'คน',
+  'หน่วยงาน',
+  'ที่นั่ง',
+  'ที่',
+  'ท่าน',
+  'ทีม',
+  'โต๊ะ',
+] as const
 
 export const PAGE_TITLE_SIZES: Record<'small' | 'medium' | 'large' | 'xlarge', { label: string; fontSize: string }> = {
   small: { label: 'S (เล็ก)', fontSize: '1.25rem' },

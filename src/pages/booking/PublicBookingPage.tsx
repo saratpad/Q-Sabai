@@ -10,6 +10,7 @@ import { th } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { TicketCard } from '../../components/ticket/TicketCard'
 import { PAGE_TITLE_SIZES, PAGE_DESC_SIZES, PAGE_SLOT_HEADER_SIZES, PAGE_SLOT_TIME_SIZES } from '../../components/ticket/ticketTypes'
+import { FormattedText } from '../../components/common/FormattedText'
 import './PublicBookingPage.css'
 
 export default function PublicBookingPage() {
@@ -381,6 +382,7 @@ export default function PublicBookingPage() {
   const isEventOpen = event.status === 'active'
 
   const pageSettings = (event.settings as any) || {}
+  const slotUnit = pageSettings.slot_unit || pageSettings.capacity_unit || 'ที่'
   const pageTitleColor = pageSettings.page_title_color || undefined
   const pageTitleSize = pageSettings.page_title_size ? (PAGE_TITLE_SIZES[pageSettings.page_title_size as keyof typeof PAGE_TITLE_SIZES]?.fontSize) : undefined
   const pageDescColor = pageSettings.page_desc_color || undefined
@@ -389,11 +391,19 @@ export default function PublicBookingPage() {
   const pageSlotHeaderSize = pageSettings.page_slot_header_size ? (PAGE_SLOT_HEADER_SIZES[pageSettings.page_slot_header_size as keyof typeof PAGE_SLOT_HEADER_SIZES]?.fontSize) : undefined
   const pageSlotTimeColor = pageSettings.page_slot_time_color || (pageSettings.page_card_theme === 'light' ? '#1e293b' : undefined)
   const pageSlotTimeSize = pageSettings.page_slot_time_size ? (PAGE_SLOT_TIME_SIZES[pageSettings.page_slot_time_size as keyof typeof PAGE_SLOT_TIME_SIZES]?.fontSize) : undefined
+  const pageSlotDateColor = pageSettings.page_slot_date_color || (pageSettings.page_card_theme === 'light' ? '#475569' : '#94a3b8')
   const pageBgType = pageSettings.page_bg_type || 'default'
   const pageBgColor = pageSettings.page_bg_color || undefined
   const pageBgImage = pageSettings.page_bg_image || null
   const pageBgOverlay = pageSettings.page_bg_overlay ?? 30
   const pageCardTheme = pageSettings.page_card_theme || 'glass'
+  const pageFormLabelColor = pageSettings.page_form_label_color || undefined
+  const pageFormLabelWeightMap: Record<string, string> = {
+    normal: '400', medium: '500', semibold: '600', bold: '700'
+  }
+  const pageFormLabelWeight = pageSettings.page_form_label_weight
+    ? pageFormLabelWeightMap[pageSettings.page_form_label_weight] || '500'
+    : '500'
 
   return (
     <div
@@ -512,15 +522,15 @@ export default function PublicBookingPage() {
             )}
           </div>
           {event.description && (
-            <p
+            <div
               className="booking-event-desc"
               style={{
                 color: pageDescColor,
                 fontSize: pageDescSize,
               }}
             >
-              {event.description}
-            </p>
+              <FormattedText text={event.description} />
+            </div>
           )}
           <div className="booking-event-meta">
             {event.is_group ? (
@@ -696,13 +706,18 @@ export default function PublicBookingPage() {
                       >
                         {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
                       </div>
-                      <div className="slot-capacity">{format(new Date(slot.slot_date), 'dd MMM', { locale: th })}</div>
+                      <div
+                        className="slot-capacity"
+                        style={{ color: pageSlotDateColor }}
+                      >
+                        {format(new Date(slot.slot_date), 'dd MMM', { locale: th })}
+                      </div>
                       {isFull ? (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-danger-light)', fontWeight: 600 }}>เต็มแล้ว</div>
                       ) : isClosed ? (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ปิด</div>
                       ) : (
-                        <div className="slot-available">ว่าง {available}/{slot.capacity} ที่</div>
+                        <div className="slot-available">ว่าง {available}/{slot.capacity} {slotUnit}</div>
                       )}
                     </div>
                   )
@@ -721,7 +736,13 @@ export default function PublicBookingPage() {
                 <div className="booking-form">
                   {customFields.map(field => (
                     <div key={field.id} className="form-group">
-                      <label className="form-label">
+                      <label
+                        className="form-label"
+                        style={{
+                          color: pageFormLabelColor,
+                          fontWeight: pageFormLabelWeight,
+                        }}
+                      >
                         {field.label}
                         {field.is_required && <span className="required"> *</span>}
                       </label>
@@ -758,9 +779,9 @@ export default function PublicBookingPage() {
                 disabled={booking}
               >
                 {booking ? (
-                  <><div className="spinner" /> กำลังจอง...</>
+                  <><div className="spinner" /> กำลังบันทึก...</>
                 ) : (
-                  <>🎫 ยืนยันจองคิว</>
+                  <>📋 ลงทะเบียน/จองคิว</>
                 )}
               </button>
             </div>

@@ -11,6 +11,8 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../../stores/authStore'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
 import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import { FormattedText } from '../../components/common/FormattedText'
+import { DescriptionEditor } from '../../components/common/DescriptionEditor'
 import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
 import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
 import './EventDetailPage.css'
@@ -158,6 +160,7 @@ export default function EventDetailPage() {
           page_bg_image: ts.page_bg_image || null,
           page_bg_overlay: ts.page_bg_overlay ?? 30,
           page_card_theme: ts.page_card_theme || 'glass',
+          slot_unit: ts.slot_unit || ts.capacity_unit || 'ที่',
         })
         if (eventRes.data.is_group) {
           if (activeTab === 'bookings' || activeTab === 'settings' || activeTab === 'line') {
@@ -278,7 +281,11 @@ export default function EventDetailPage() {
             {event.status === 'paused' && <span className="badge badge-paused">⏸ หยุดชั่วคราว</span>}
             {event.status === 'closed' && <span className="badge badge-closed">✕ ปิดแล้ว</span>}
           </div>
-          {event.description && <p>{event.description}</p>}
+          {event.description && (
+            <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem', margin: 'var(--space-2) 0', lineHeight: 1.6 }}>
+              <FormattedText text={event.description} />
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             {event.is_group ? (
               <div className="detail-stat"><span>📁</span><span>{childEvents.length} กิจกรรมย่อย</span></div>
@@ -426,10 +433,11 @@ export default function EventDetailPage() {
                   <label className="form-label">ชื่องาน</label>
                   <input className="form-input" value={editGroupTitle} onChange={e => setEditGroupTitle(e.target.value)} />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">รายละเอียด</label>
-                  <textarea className="form-input form-textarea" value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} rows={3} />
-                </div>
+                <DescriptionEditor
+                  value={editGroupDesc}
+                  onChange={setEditGroupDesc}
+                  rows={3}
+                />
                 <div className="form-group">
                   <label className="form-label">แบนเนอร์</label>
                   {editGroupBannerPreview && (
@@ -448,9 +456,9 @@ export default function EventDetailPage() {
               </div>
             ) : (
               <div>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', margin: '0' }}>
-                  {event.description || 'ไม่มีรายละเอียด'}
-                </p>
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', margin: '0', lineHeight: 1.6 }}>
+                  {event.description ? <FormattedText text={event.description} /> : 'ไม่มีรายละเอียด'}
+                </div>
               </div>
             )}
           </div>

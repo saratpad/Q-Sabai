@@ -8,8 +8,9 @@ import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { TicketCustomizer } from '../../components/ticket/TicketCustomizer'
 import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustomizer'
+import { DescriptionEditor } from '../../components/common/DescriptionEditor'
 import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
-import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS } from '../../components/ticket/ticketTypes'
+import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS, PRESET_SLOT_UNITS } from '../../components/ticket/ticketTypes'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -86,6 +87,8 @@ export default function EditEventPage() {
         setTtsPlayChime((event.settings as any)?.tts_play_chime ?? true)
         setTtsChimeStyle((event.settings as any)?.tts_chime_style || 'classic')
         const ts = (event.settings as any) || {}
+        const loadedSlotUnit = ts.slot_unit || ts.capacity_unit || 'ที่'
+        setSlotUnit(loadedSlotUnit)
         setTicketSettings({
           ticket_enabled: ts.ticket_enabled ?? true,
           ticket_bg_type: ts.ticket_bg_type || 'color',
@@ -105,11 +108,15 @@ export default function EditEventPage() {
           page_slot_header_size: ts.page_slot_header_size || 'medium',
           page_slot_time_color: ts.page_slot_time_color || (ts.page_card_theme === 'light' ? '#1e293b' : '#f1f5f9'),
           page_slot_time_size: ts.page_slot_time_size || 'medium',
+          page_slot_date_color: ts.page_slot_date_color || (ts.page_card_theme === 'light' ? '#475569' : '#94a3b8'),
           page_bg_type: ts.page_bg_type || 'default',
           page_bg_color: ts.page_bg_color || '#0a0f1e',
           page_bg_image: ts.page_bg_image || null,
           page_bg_overlay: ts.page_bg_overlay ?? 30,
           page_card_theme: ts.page_card_theme || 'glass',
+          page_form_label_color: ts.page_form_label_color || '#cbd5e1',
+          page_form_label_weight: ts.page_form_label_weight || 'medium',
+          slot_unit: loadedSlotUnit,
         })
         setQueueType(event.queue_type as any)
         if (event.banner_url) {
@@ -159,6 +166,7 @@ export default function EditEventPage() {
   const [queueNumberingType, setQueueNumberingType] = useState<'normal' | 'round_reset' | 'round_fixed'>('normal')
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>(DEFAULT_TICKET_SETTINGS)
   const [pageStyleSettings, setPageStyleSettings] = useState<PageStyleSettings>(DEFAULT_PAGE_STYLE_SETTINGS)
+  const [slotUnit, setSlotUnit] = useState('ที่')
   const [slots, setSlots] = useState<SlotInput[]>([
     { id: uuidv4(), slot_date: '', start_time: '09:00', end_time: '10:00', capacity: 10 }
   ])
@@ -253,6 +261,7 @@ export default function EditEventPage() {
           tts_ending_word: ttsEndingWord.trim(),
           tts_play_chime: ttsPlayChime,
           tts_chime_style: ttsChimeStyle,
+          slot_unit: slotUnit.trim() || pageStyleSettings.slot_unit || 'ที่',
           ...ticketSettings,
           ...pageStyleSettings,
         },
@@ -523,15 +532,10 @@ export default function EditEventPage() {
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">รายละเอียด</label>
-                  <textarea
-                    className="form-input form-textarea"
-                    placeholder="รายละเอียดเพิ่มเติม เช่น สถานที่ เงื่อนไขการใช้บริการ..."
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                  />
-                </div>
+                <DescriptionEditor
+                  value={description}
+                  onChange={setDescription}
+                />
 
                 <div className="form-group">
                   <label className="form-label">แบนเนอร์กิจกรรม</label>
@@ -563,7 +567,12 @@ export default function EditEventPage() {
                   </p>
                   <PageStyleCustomizer
                     settings={pageStyleSettings}
-                    onChange={setPageStyleSettings}
+                    onChange={newSettings => {
+                      setPageStyleSettings(newSettings)
+                      if (newSettings.slot_unit !== undefined) {
+                        setSlotUnit(newSettings.slot_unit)
+                      }
+                    }}
                     userId={user?.id}
                     eventTitle={title}
                     eventDesc={description}
@@ -620,6 +629,47 @@ export default function EditEventPage() {
                     <h3>กำหนดรอบเวลา</h3>
                     <button className="btn btn-secondary btn-sm" onClick={addSlot}>+ เพิ่มรอบ</button>
                   </div>
+
+                  {/* Slot Unit Customization */}
+                  <div className="form-group" style={{ marginBottom: 'var(--space-5)', padding: '14px 16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <label className="form-label" style={{ fontWeight: 600, marginBottom: '8px' }}>
+                      หน่วยนับของจำนวนที่ว่าง / รับ
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        style={{ maxWidth: '160px' }}
+                        placeholder="เช่น คน, หน่วยงาน"
+                        value={slotUnit}
+                        onChange={e => {
+                          const val = e.target.value
+                          setSlotUnit(val)
+                          setPageStyleSettings(prev => ({ ...prev, slot_unit: val }))
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {PRESET_SLOT_UNITS.map(unit => (
+                          <button
+                            key={unit}
+                            type="button"
+                            className={`btn btn-sm ${slotUnit === unit ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ fontSize: '0.8125rem', padding: '4px 10px' }}
+                            onClick={() => {
+                              setSlotUnit(unit)
+                              setPageStyleSettings(prev => ({ ...prev, slot_unit: unit }))
+                            }}
+                          >
+                            {unit}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
+                      หน่วยนี้จะแสดงในตารางด้านล่างและบนหน้ารับจอง เช่น "ว่าง 10/10 {slotUnit || 'คน'}"
+                    </span>
+                  </div>
+
                   {slots.map((slot, idx) => (
                     <div key={slot.id} className="slot-input-row">
                       <span className="slot-number">รอบ {idx + 1}</span>
@@ -641,8 +691,8 @@ export default function EditEventPage() {
                         <label className="form-label">สิ้นสุด</label>
                         <TimePicker value={slot.end_time} onChange={v => updateSlot(slot.id, 'end_time', v)} />
                       </div>
-                      <div className="form-group" style={{ width: '90px' }}>
-                        <label className="form-label">รับ (คน)</label>
+                      <div className="form-group" style={{ width: '100px' }}>
+                        <label className="form-label">รับ ({slotUnit || 'คน'})</label>
                         <input type="number" className="form-input" min={1} value={slot.capacity} onChange={e => updateSlot(slot.id, 'capacity', parseInt(e.target.value))} />
                       </div>
                       {slots.length > 1 && (

@@ -8,7 +8,9 @@ import {
   PAGE_SLOT_TIME_SIZES,
   PRESET_TEXT_COLORS,
   PRESET_PAGE_BG_COLORS,
+  PRESET_SLOT_UNITS,
 } from '../ticket/ticketTypes'
+import { FormattedText } from '../common/FormattedText'
 import { supabase } from '../../lib/supabase'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
@@ -369,9 +371,135 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Slot Date Color */}
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <label className="page-style-label">
+                <span>สีวันที่ใต้รอบเวลา</span>
+                <span className="color-hex-text">{mergedSettings.page_slot_date_color || '#94a3b8'}</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_slot_date_color || '#94a3b8' }}>
+                  <input
+                    type="color"
+                    value={mergedSettings.page_slot_date_color || '#94a3b8'}
+                    onChange={e => updateSetting('page_slot_date_color', e.target.value)}
+                  />
+                </label>
+                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                  {PRESET_TEXT_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      title={c.name}
+                      className={`preset-swatch-btn ${(mergedSettings.page_slot_date_color || '#94a3b8').toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => updateSetting('page_slot_date_color', c.color)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Slot Unit (หน่วยของจำนวนที่ว่าง) */}
+            <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <label className="page-style-label">
+                <span>หน่วยของจำนวนที่ว่าง (เช่น คน, หน่วยงาน, ที่นั่ง)</span>
+                <span style={{ color: 'var(--color-primary)' }}>{mergedSettings.slot_unit || 'ที่'}</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ maxWidth: '140px', padding: '6px 10px', fontSize: '0.875rem' }}
+                  placeholder="เช่น คน, หน่วยงาน"
+                  value={mergedSettings.slot_unit || ''}
+                  onChange={e => updateSetting('slot_unit', e.target.value)}
+                />
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {PRESET_SLOT_UNITS.map(unit => (
+                    <button
+                      key={unit}
+                      type="button"
+                      className={`btn btn-sm ${mergedSettings.slot_unit === unit ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '3px 8px', fontSize: '0.75rem', borderRadius: '4px' }}
+                      onClick={() => updateSetting('slot_unit', unit)}
+                    >
+                      {unit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Section 5: Booking Page Background */}
+          {/* Section 5: Form Label Style */}
+          <div className="page-style-control-group">
+            <div className="page-style-section-title">
+              <span>📝</span>
+              <span>ตัวอักษรไกด์ฟอร์มลงทะเบียน (Form Label)</span>
+            </div>
+
+            {/* Form Label Color */}
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <label className="page-style-label">
+                <span>สีตัวอักษรไกด์ (ชื่อ-นามสกุล, เบอร์โทรศัพท์ ฯลฯ)</span>
+                <span className="color-hex-text">{mergedSettings.page_form_label_color || '#cbd5e1'}</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <label className="color-input-preview" style={{ backgroundColor: mergedSettings.page_form_label_color || '#cbd5e1' }}>
+                  <input
+                    type="color"
+                    value={mergedSettings.page_form_label_color || '#cbd5e1'}
+                    onChange={e => updateSetting('page_form_label_color', e.target.value)}
+                  />
+                </label>
+                <div className="preset-swatches" style={{ margin: 0, flex: 1 }}>
+                  {PRESET_TEXT_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      title={c.name}
+                      className={`preset-swatch-btn ${(mergedSettings.page_form_label_color || '#cbd5e1').toLowerCase() === c.color.toLowerCase() ? 'active' : ''}`}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => updateSetting('page_form_label_color', c.color)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Form Label Weight */}
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <label className="page-style-label">
+                <span>ความเข้มตัวอักษรไกด์</span>
+                <span style={{ color: 'var(--color-primary)' }}>
+                  {mergedSettings.page_form_label_weight === 'normal' && 'บาง (Normal)'}
+                  {mergedSettings.page_form_label_weight === 'medium' && 'ปกติ (Medium)'}
+                  {(!mergedSettings.page_form_label_weight || mergedSettings.page_form_label_weight === 'medium') && 'ปกติ (Medium)'}
+                  {mergedSettings.page_form_label_weight === 'semibold' && 'หนา (Semibold)'}
+                  {mergedSettings.page_form_label_weight === 'bold' && 'หนามาก (Bold)'}
+                </span>
+              </label>
+              <div className="btn-group-segmented" style={{ marginTop: '6px' }}>
+                {(['normal', 'medium', 'semibold', 'bold'] as const).map(w => (
+                  <button
+                    key={w}
+                    type="button"
+                    className={`btn-segmented ${(mergedSettings.page_form_label_weight || 'medium') === w ? 'active' : ''}`}
+                    onClick={() => updateSetting('page_form_label_weight', w)}
+                  >
+                    {w === 'normal' && 'บาง'}
+                    {w === 'medium' && 'ปกติ'}
+                    {w === 'semibold' && 'หนา'}
+                    {w === 'bold' && 'หนามาก'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Booking Page Background */}
           <div className="page-style-control-group">
             <div className="page-style-section-title">
               <span>🎨</span>
@@ -621,18 +749,19 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                 </h2>
 
                 {/* Description */}
-                <p
+                <div
                   style={{
                     color: mergedSettings.page_desc_color,
                     fontSize: descSizeInfo.fontSize,
                     marginTop: '8px',
                     marginBottom: 0,
-                    lineHeight: 1.45,
+                    lineHeight: 1.55,
                     wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
                   }}
                 >
-                  {eventDesc || 'รายละเอียดกิจกรรม'}
-                </p>
+                  <FormattedText text={eventDesc || 'รายละเอียดกิจกรรมสำหรับการจองคิว เช่น เวลา สถานที่ หรือเงื่อนไขต่างๆ'} />
+                </div>
               </div>
 
               {/* Slot Picker Preview */}
@@ -659,11 +788,11 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                     >
                       09:30 - 12:00
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.6875rem', color: mergedSettings.page_slot_date_color || '#94a3b8', marginTop: '2px' }}>
                       26 ต.ค.
                     </div>
                     <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
-                      ว่าง 50/50 ที่
+                      ว่าง 50/50 {mergedSettings.slot_unit || 'ที่'}
                     </div>
                   </div>
                   <div className="page-preview-slot-card">
@@ -677,11 +806,11 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                     >
                       13:00 - 16:30
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.6875rem', color: mergedSettings.page_slot_date_color || '#94a3b8', marginTop: '2px' }}>
                       26 ต.ค.
                     </div>
                     <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-success)', marginTop: '2px' }}>
-                      ว่าง 45/50 ที่
+                      ว่าง 45/50 {mergedSettings.slot_unit || 'ที่'}
                     </div>
                   </div>
                 </div>
@@ -692,14 +821,20 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                 <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: mergedSettings.page_card_theme === 'light' ? '#1e293b' : 'var(--color-text-primary)' }}>
                   📋 ฟอร์มลงทะเบียนจองคิว
                 </div>
-                <div className="page-preview-mock-input">
-                  <span>👤 ชื่อ-นามสกุล</span>
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '0.65rem', color: mergedSettings.page_form_label_color || '#cbd5e1', fontWeight: mergedSettings.page_form_label_weight === 'normal' ? 400 : mergedSettings.page_form_label_weight === 'semibold' ? 600 : mergedSettings.page_form_label_weight === 'bold' ? 700 : 500, marginBottom: '3px' }}>ชื่อ-นามสกุล</div>
+                  <div className="page-preview-mock-input">
+                    <span>👤 ชื่อ-นามสกุล</span>
+                  </div>
                 </div>
-                <div className="page-preview-mock-input">
-                  <span>📞 เบอร์โทรศัพท์</span>
+                <div style={{ marginTop: '6px' }}>
+                  <div style={{ fontSize: '0.65rem', color: mergedSettings.page_form_label_color || '#cbd5e1', fontWeight: mergedSettings.page_form_label_weight === 'normal' ? 400 : mergedSettings.page_form_label_weight === 'semibold' ? 600 : mergedSettings.page_form_label_weight === 'bold' ? 700 : 500, marginBottom: '3px' }}>เบอร์โทรศัพท์</div>
+                  <div className="page-preview-mock-input">
+                    <span>📞 เบอร์โทรศัพท์</span>
+                  </div>
                 </div>
                 <div className="page-preview-mock-btn">
-                  จองคิวทันที
+                  📋 ลงทะเบียน/จองคิว
                 </div>
               </div>
             </div>
