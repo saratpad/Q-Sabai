@@ -6,6 +6,7 @@ import { exportToExcel, exportToGoogleSheets } from '../../lib/export'
 import type { BookingWithProfile } from '../../lib/database.types'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { formatThaiSlotDate } from '../../lib/thaiDate'
 import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../stores/authStore'
@@ -644,9 +645,16 @@ export default function EventDetailPage() {
                             ))}
                             {event.queue_type === 'scheduled' && (
                               <td>
-                                {booking.event_slots 
-                                  ? `${booking.event_slots.start_time.slice(0, 5)} - ${booking.event_slots.end_time.slice(0, 5)}`
-                                  : '-'}
+                                {booking.event_slots ? (
+                                  <div>
+                                    {booking.event_slots.slot_date && (
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 500 }}>
+                                        {formatThaiSlotDate(booking.event_slots.slot_date)}
+                                      </div>
+                                    )}
+                                    <span>{booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)}</span>
+                                  </div>
+                                ) : '-'}
                               </td>
                             )}
                             <td>{format(new Date(booking.created_at), 'dd/MM/yy HH:mm', { locale: th })}</td>

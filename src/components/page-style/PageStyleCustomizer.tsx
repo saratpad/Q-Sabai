@@ -174,7 +174,7 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
     date: {
       title: 'วันที่ (Date)',
       icon: '📅',
-      previewText: '26 ต.ค.',
+      previewText: `26 ต.ค. ${new Date().getFullYear() + 543}`,
       desc: 'วันของรอบการจอง',
     },
     quota: {
@@ -1078,7 +1078,7 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                               fontWeight: 500,
                             }}
                           >
-                            26 ต.ค.
+                            26 ต.ค. {new Date().getFullYear() + 543}
                           </div>
                         )
                       }
@@ -1138,7 +1138,7 @@ export const PageStyleCustomizer: React.FC<PageStyleCustomizerProps> = ({
                               fontWeight: 500,
                             }}
                           >
-                            26 ต.ค.
+                            26 ต.ค. {new Date().getFullYear() + 543}
                           </div>
                         )
                       }

@@ -10,6 +10,7 @@ import { PageStyleCustomizer } from '../../components/page-style/PageStyleCustom
 import { DescriptionEditor } from '../../components/common/DescriptionEditor'
 import type { TicketSettings, PageStyleSettings } from '../../components/ticket/ticketTypes'
 import { DEFAULT_TICKET_SETTINGS, DEFAULT_PAGE_STYLE_SETTINGS, PRESET_SLOT_UNITS } from '../../components/ticket/ticketTypes'
+import { formatThaiSlotDate } from '../../lib/thaiDate'
 import './CreateEventPage.css'
 
 interface SlotInput {
@@ -528,7 +529,9 @@ export default function CreateEventPage() {
                     <div key={slot.id} className="slot-input-row">
                       <span className="slot-number">รอบ {idx + 1}</span>
                       <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">วันที่</label>
+                        <label className="form-label">
+                          วันที่ {slot.slot_date && <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>({formatThaiSlotDate(slot.slot_date)})</span>}
+                        </label>
                         <input 
                           type="date" 
                           className="form-input" 

@@ -7,6 +7,7 @@ import { useSystemStore } from '../../stores/systemStore'
 import type { Event, EventSlot, CustomField, Booking } from '../../lib/database.types'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { formatThaiSlotDate, formatThaiDateTime } from '../../lib/thaiDate'
 import toast from 'react-hot-toast'
 import { TicketCard } from '../../components/ticket/TicketCard'
 import type { SlotCardItemKey } from '../../components/ticket/ticketTypes'
@@ -626,7 +627,7 @@ export default function PublicBookingPage() {
                   queueNumber={`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
                   eventTitle={event.title}
                   slotInfo={myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) ? `รอบ: ${slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - ${slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.` : null}
-                  dateStr={format(new Date(myBooking.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
+                  dateStr={formatThaiDateTime(myBooking.created_at)}
                 />
               )}
 
@@ -664,7 +665,7 @@ export default function PublicBookingPage() {
                   queueNumber={`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
                   eventTitle={event.title}
                   slotInfo={myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) ? `รอบ: ${slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - ${slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.` : null}
-                  dateStr={format(new Date(myBooking.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
+                  dateStr={formatThaiDateTime(myBooking.created_at)}
                 />
               </div>
 
@@ -747,7 +748,7 @@ export default function PublicBookingPage() {
                                 marginTop: idx > 0 ? 'var(--space-1)' : 0,
                               }}
                             >
-                              {format(new Date(slot.slot_date), 'dd MMM', { locale: th })}
+                              {formatThaiSlotDate(slot.slot_date)}
                             </div>
                           )
                         }

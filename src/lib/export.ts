@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import type { BookingWithProfile, Event, CustomField } from './database.types'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { formatThaiSlotDate } from './thaiDate'
 
 interface ExportOptions {
   event: Event
@@ -27,7 +28,8 @@ export const exportToExcel = (options: ExportOptions) => {
     .sort((a, b) => a.queue_number - b.queue_number)
     .map(booking => {
       const responses = (booking.field_responses || {}) as Record<string, string>
-      const slotStr = booking.event_slots ? `${booking.event_slots.start_time.slice(0,5)} - ${booking.event_slots.end_time.slice(0,5)}` : ''
+      const slotDate = booking.event_slots?.slot_date ? `${formatThaiSlotDate(booking.event_slots.slot_date)} ` : ''
+      const slotStr = booking.event_slots ? `${slotDate}${booking.event_slots.start_time.slice(0,5)} - ${booking.event_slots.end_time.slice(0,5)}` : ''
       return [
         booking.queue_number,
         ...(event.queue_type === 'scheduled' ? [slotStr] : []),
@@ -74,7 +76,8 @@ export const exportToCSV = (options: ExportOptions) => {
     .sort((a, b) => a.queue_number - b.queue_number)
     .map(booking => {
       const responses = (booking.field_responses || {}) as Record<string, string>
-      const slotStr = booking.event_slots ? `${booking.event_slots.start_time.slice(0,5)} - ${booking.event_slots.end_time.slice(0,5)}` : ''
+      const slotDate = booking.event_slots?.slot_date ? `${formatThaiSlotDate(booking.event_slots.slot_date)} ` : ''
+      const slotStr = booking.event_slots ? `${slotDate}${booking.event_slots.start_time.slice(0,5)} - ${booking.event_slots.end_time.slice(0,5)}` : ''
       const row = [
         booking.queue_number,
         ...(event.queue_type === 'scheduled' ? [slotStr] : []),

@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import type { Booking, Event } from '../../lib/database.types'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
+import { formatThaiSlotDate } from '../../lib/thaiDate'
 import toast from 'react-hot-toast'
 
 interface BookingWithEvent extends Booking {
@@ -115,7 +116,7 @@ export default function MyBookingsPage() {
                   </div>
                   {booking.event_slots && (
                     <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', marginTop: '4px', fontWeight: 600 }}>
-                      รอบ: {booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)} น.
+                      รอบ: {booking.event_slots.slot_date ? `${formatThaiSlotDate(booking.event_slots.slot_date)} ` : ''}{booking.event_slots.start_time.slice(0, 5)} - {booking.event_slots.end_time.slice(0, 5)} น.
                     </div>
                   )}
                 </div>
