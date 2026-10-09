@@ -176,18 +176,20 @@ export default function PublicBookingPage() {
       // Phone number validation
       const isPhoneField = field.field_type === 'phone' || /โทร|phone|tel|มือถือ/i.test(field.label)
       if (isPhoneField && val) {
-        // Auto-clean spaces and hyphens so user input with dashes/spaces works smoothly
-        let cleanedPhone = val.replace(/[-\s]/g, '')
-        if (cleanedPhone.startsWith('+66')) cleanedPhone = '0' + cleanedPhone.slice(3)
-        else if (cleanedPhone.startsWith('66') && cleanedPhone.length >= 11) cleanedPhone = '0' + cleanedPhone.slice(2)
+        // Extract all digits to verify primary phone number
+        const digits = val.replace(/\D/g, '')
+        let normDigits = digits
+        if (normDigits.startsWith('66') && normDigits.length >= 11) {
+          normDigits = '0' + normDigits.slice(2)
+        }
 
-        // Support 9 digits (landline e.g. 021234567) or 10 digits (mobile e.g. 0891234567)
-        if (!/^0\d{8,9}$/.test(cleanedPhone)) {
-          toast.error(`กรุณากรอก ${field.label} ให้ถูกต้อง (9-10 หลัก เช่น 0891234567 หรือ 021234567)`)
+        // Support mobile (10 digits), landline (9 digits), and extensions (e.g. 025779000 ต่อ 9382)
+        if (!normDigits.startsWith('0') || normDigits.length < 9) {
+          toast.error(`กรุณากรอก ${field.label} ให้ถูกต้อง (อย่างน้อย 9-10 หลัก เช่น 0891234567 หรือ 025779000 ต่อ 9382)`)
           return
         }
-        // Save cleaned phone value
-        fieldValues[field.id] = cleanedPhone
+        // Save trimmed phone value (preserving extension notes like "ต่อ 9382")
+        fieldValues[field.id] = val.trim()
       }
     }
 
@@ -303,14 +305,27 @@ export default function PublicBookingPage() {
 
 
   const handleSearchAndCancel = async () => {
-    let cleaned = cancelPhone.trim().replace(/[-\s]/g, '')
-    if (cleaned.startsWith('+66')) cleaned = '0' + cleaned.slice(3)
-    else if (cleaned.startsWith('66') && cleaned.length >= 11) cleaned = '0' + cleaned.slice(2)
-
-    if (!cleaned) return
-    if (!/^0\d{8,9}$/.test(cleaned)) {
-      toast.error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (9-10 หลัก เช่น 0891234567 หรือ 021234567)')
+    const rawInput = cancelPhone.trim()
+    if (!rawInput) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์ที่ใช้จอง')
       return
+    }
+
+    const digitsOnly = rawInput.replace(/\D/g, '')
+    if (digitsOnly.length < 6) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์อย่างน้อย 9 หลัก เช่น 0891234567 หรือ 025779000 ต่อ 9382')
+      return
+    }
+
+    // Extract base phone number without extension
+    let basePhone = digitsOnly
+    if (basePhone.startsWith('66') && basePhone.length >= 11) {
+      basePhone = '0' + basePhone.slice(2)
+    }
+    if (basePhone.length > 10 && basePhone.startsWith('02')) {
+      basePhone = basePhone.slice(0, 9)
+    } else if (basePhone.length > 10 && basePhone.startsWith('0')) {
+      basePhone = basePhone.slice(0, 10)
     }
 
     setCancelLoading(true)
@@ -320,23 +335,34 @@ export default function PublicBookingPage() {
     let allBookings: any[] = []
 
     const searchPhoneInEvent = async (eId: string, eventTitle: string) => {
-      // 1. First search with cleaned phone
-      const { data, error } = await supabase.rpc('get_my_booking_by_phone', {
+      // 1. Search with raw input (e.g. "025779000 ต่อ 9382")
+      const { data: rawData } = await supabase.rpc('get_my_booking_by_phone', {
         p_event_id: eId,
-        p_phone: cleaned
+        p_phone: rawInput
       })
-      if (!error && data && data.length > 0) {
-        return data.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
+      if (rawData && rawData.length > 0) {
+        return rawData.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
       }
 
-      // 2. If no result and cancelPhone differs from cleaned, fallback to raw input
-      if (cancelPhone.trim() !== cleaned) {
-        const { data: rawData } = await supabase.rpc('get_my_booking_by_phone', {
+      // 2. Search with base phone (e.g. "025779000")
+      if (basePhone && basePhone !== rawInput) {
+        const { data: baseData } = await supabase.rpc('get_my_booking_by_phone', {
           p_event_id: eId,
-          p_phone: cancelPhone.trim()
+          p_phone: basePhone
         })
-        if (rawData && rawData.length > 0) {
-          return rawData.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
+        if (baseData && baseData.length > 0) {
+          return baseData.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
+        }
+      }
+
+      // 3. Search with full digits only (e.g. "0257790009382")
+      if (digitsOnly && digitsOnly !== rawInput && digitsOnly !== basePhone) {
+        const { data: digitsData } = await supabase.rpc('get_my_booking_by_phone', {
+          p_event_id: eId,
+          p_phone: digitsOnly
+        })
+        if (digitsData && digitsData.length > 0) {
+          return digitsData.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
         }
       }
 
@@ -496,13 +522,13 @@ export default function PublicBookingPage() {
           <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: 'var(--space-6)', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginBottom: 'var(--space-2)' }}>🔍 ค้นหาการจองของคุณ</h3>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem' }}>
-              กรอกเบอร์โทรศัพท์ที่ใช้ในการจองเพื่อดูข้อมูลหรือยกเลิกคิว (เช่น 0891234567 หรือ 021234567)
+              กรอกเบอร์โทรศัพท์ที่ใช้ในการจองเพื่อดูข้อมูลหรือยกเลิกคิว (เช่น 0891234567 หรือ 025779000 ต่อ 9382)
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <input
-                type="tel"
+                type="text"
                 className="form-input"
-                placeholder="เช่น 0891234567 หรือ 021234567"
+                placeholder="เช่น 0891234567 หรือ 025779000 ต่อ 9382"
                 value={cancelPhone}
                 onChange={e => {
                   setCancelPhone(e.target.value)
@@ -516,13 +542,13 @@ export default function PublicBookingPage() {
                     handleSearchAndCancel()
                   }
                 }}
-                maxLength={15}
+                maxLength={100}
                 style={{ flex: 1 }}
               />
               <button 
                 className="btn btn-primary" 
                 onClick={handleSearchAndCancel} 
-                disabled={cancelLoading || cancelPhone.trim().replace(/\D/g, '').length < 9}
+                disabled={cancelLoading || cancelPhone.trim().replace(/\D/g, '').length < 6}
               >
                 {cancelLoading ? 'ค้นหา...' : 'ค้นหา'}
               </button>
@@ -747,10 +773,11 @@ export default function PublicBookingPage() {
 
               <div className="booking-details-summary-card">
                 <div className="booking-details-header">
-                  <div className="booking-details-heading">
-                    <span>📋</span> ข้อมูลการลงทะเบียน
+                  <div className="booking-details-heading" style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.15rem' }}>
+                    <span style={{ fontSize: '1.25rem' }}>📋</span>
+                    <span style={{ color: '#ffffff', fontWeight: 800 }}>ข้อมูลการลงทะเบียน</span>
                   </div>
-                  <span className="badge badge-waiting" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+                  <span className="badge" style={{ fontSize: '0.8rem', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }}>
                     สถานะ: จองสำเร็จ
                   </span>
                 </div>

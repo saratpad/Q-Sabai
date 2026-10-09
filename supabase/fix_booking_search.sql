@@ -33,6 +33,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_clean_phone TEXT;
+  v_base_phone TEXT;
 BEGIN
   -- Strip all non-digit characters from search input
   v_clean_phone := regexp_replace(p_phone, '[^0-9]', '', 'g');
@@ -44,6 +45,15 @@ BEGIN
 
   IF v_clean_phone IS NULL OR length(v_clean_phone) < 6 THEN
     RETURN;
+  END IF;
+
+  -- Extract base phone number without extension if extension is appended
+  IF length(v_clean_phone) > 10 AND v_clean_phone LIKE '02%' THEN
+    v_base_phone := substr(v_clean_phone, 1, 9);
+  ELSIF length(v_clean_phone) > 10 AND v_clean_phone LIKE '0%' THEN
+    v_base_phone := substr(v_clean_phone, 1, 10);
+  ELSE
+    v_base_phone := v_clean_phone;
   END IF;
 
   RETURN QUERY
@@ -58,6 +68,8 @@ BEGIN
         FROM jsonb_each_text(b.field_responses) kv
         WHERE regexp_replace(kv.value, '[^0-9]', '', 'g') = v_clean_phone
            OR regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_clean_phone || '%'
+           OR (v_base_phone IS NOT NULL AND length(v_base_phone) >= 9 AND regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_base_phone || '%')
+           OR (length(regexp_replace(kv.value, '[^0-9]', '', 'g')) >= 9 AND v_clean_phone LIKE '%' || regexp_replace(kv.value, '[^0-9]', '', 'g') || '%')
            OR kv.value ILIKE '%' || trim(p_phone) || '%'
       )
     )
@@ -78,6 +90,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_clean_phone TEXT;
+  v_base_phone TEXT;
   v_target_booking_id UUID;
   v_slot_id UUID;
 BEGIN
@@ -89,6 +102,14 @@ BEGIN
 
   IF v_clean_phone IS NULL OR length(v_clean_phone) < 6 THEN
     RETURN FALSE;
+  END IF;
+
+  IF length(v_clean_phone) > 10 AND v_clean_phone LIKE '02%' THEN
+    v_base_phone := substr(v_clean_phone, 1, 9);
+  ELSIF length(v_clean_phone) > 10 AND v_clean_phone LIKE '0%' THEN
+    v_base_phone := substr(v_clean_phone, 1, 10);
+  ELSE
+    v_base_phone := v_clean_phone;
   END IF;
 
   IF p_booking_id IS NOT NULL THEN
@@ -104,6 +125,8 @@ BEGIN
           FROM jsonb_each_text(b.field_responses) kv
           WHERE regexp_replace(kv.value, '[^0-9]', '', 'g') = v_clean_phone
              OR regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_clean_phone || '%'
+             OR (v_base_phone IS NOT NULL AND length(v_base_phone) >= 9 AND regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_base_phone || '%')
+             OR (length(regexp_replace(kv.value, '[^0-9]', '', 'g')) >= 9 AND v_clean_phone LIKE '%' || regexp_replace(kv.value, '[^0-9]', '', 'g') || '%')
              OR kv.value ILIKE '%' || trim(p_phone) || '%'
         )
       );
@@ -119,6 +142,8 @@ BEGIN
           FROM jsonb_each_text(b.field_responses) kv
           WHERE regexp_replace(kv.value, '[^0-9]', '', 'g') = v_clean_phone
              OR regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_clean_phone || '%'
+             OR (v_base_phone IS NOT NULL AND length(v_base_phone) >= 9 AND regexp_replace(kv.value, '[^0-9]', '', 'g') LIKE '%' || v_base_phone || '%')
+             OR (length(regexp_replace(kv.value, '[^0-9]', '', 'g')) >= 9 AND v_clean_phone LIKE '%' || regexp_replace(kv.value, '[^0-9]', '', 'g') || '%')
              OR kv.value ILIKE '%' || trim(p_phone) || '%'
         )
       )

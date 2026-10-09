@@ -59,7 +59,15 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>ระบบบันทึกข้อมูลการจองเรียบร้อยแล้ว</div>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.875rem' }}>
+        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.15)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>📋</span> ข้อมูลการลงทะเบียน
+            </span>
+            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontWeight: 600 }}>
+              จองสำเร็จ
+            </span>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
             <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>กิจกรรม:</span>
             <span style={{ fontWeight: 600, textAlign: 'right', color: 'var(--color-text-primary)' }}>{eventTitle}</span>
