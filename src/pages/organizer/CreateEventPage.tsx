@@ -198,7 +198,7 @@ export default function CreateEventPage() {
             customFields.map((f, idx) => ({
               event_id: event.id,
               label: f.label.trim(),
-              field_type: f.field_type,
+              field_type: (f.field_type === 'text' && /โทร|phone|tel|มือถือ/i.test(f.label)) ? 'phone' : f.field_type,
               is_required: f.is_required,
               options: f.options,
               sort_order: idx,

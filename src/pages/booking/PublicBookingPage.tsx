@@ -23,6 +23,11 @@ import {
 import { FormattedText } from '../../components/common/FormattedText'
 import './PublicBookingPage.css'
 
+function findPhoneField(fields: CustomField[]) {
+  return fields.find(f => f.field_type === 'phone') || 
+         fields.find(f => /โทร|phone|tel|มือถือ/i.test(f.label))
+}
+
 export default function PublicBookingPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
@@ -169,11 +174,16 @@ export default function PublicBookingPage() {
       }
 
       // Phone number validation
-      if (field.field_type === 'phone' && val) {
+      const isPhoneField = field.field_type === 'phone' || /โทร|phone|tel|มือถือ/i.test(field.label)
+      if (isPhoneField && val) {
         // Auto-clean spaces and hyphens so user input with dashes/spaces works smoothly
-        const cleanedPhone = val.replace(/[-\s]/g, '')
-        if (!/^0[689]\d{8}$/.test(cleanedPhone)) {
-          toast.error(`กรุณากรอก ${field.label} ให้ถูกต้อง (เช่น 0891234567)`)
+        let cleanedPhone = val.replace(/[-\s]/g, '')
+        if (cleanedPhone.startsWith('+66')) cleanedPhone = '0' + cleanedPhone.slice(3)
+        else if (cleanedPhone.startsWith('66') && cleanedPhone.length >= 11) cleanedPhone = '0' + cleanedPhone.slice(2)
+
+        // Support 9 digits (landline e.g. 021234567) or 10 digits (mobile e.g. 0891234567)
+        if (!/^0\d{8,9}$/.test(cleanedPhone)) {
+          toast.error(`กรุณากรอก ${field.label} ให้ถูกต้อง (9-10 หลัก เช่น 0891234567 หรือ 021234567)`)
           return
         }
         // Save cleaned phone value
@@ -182,7 +192,7 @@ export default function PublicBookingPage() {
     }
 
     if ((event.settings as any)?.allow_multiple_bookings === false) {
-      const phoneField = customFields.find(f => f.field_type === 'phone')
+      const phoneField = findPhoneField(customFields)
       if (phoneField && fieldValues[phoneField.id]) {
         const phoneValue = fieldValues[phoneField.id]
         const { data: existingBookings } = await supabase.rpc('get_my_booking_by_phone', {
@@ -197,7 +207,7 @@ export default function PublicBookingPage() {
     }
 
     if (selectedSlot && event.parent_id) {
-      const phoneField = customFields.find(f => f.field_type === 'phone')
+      const phoneField = findPhoneField(customFields)
       if (phoneField && fieldValues[phoneField.id]) {
         const phoneValue = fieldValues[phoneField.id]
 
@@ -242,7 +252,7 @@ export default function PublicBookingPage() {
       if (error) throw error
 
       // After successful insert, fetch the booking details using the phone number
-      const phoneField = customFields.find(f => f.field_type === 'phone')
+      const phoneField = findPhoneField(customFields)
       const phoneValue = phoneField ? fieldValues[phoneField.id] : null
 
       if (phoneValue) {
@@ -275,10 +285,13 @@ export default function PublicBookingPage() {
 
 
   const handleSearchAndCancel = async () => {
-    const cleaned = cancelPhone.trim().replace(/[-\s]/g, '')
+    let cleaned = cancelPhone.trim().replace(/[-\s]/g, '')
+    if (cleaned.startsWith('+66')) cleaned = '0' + cleaned.slice(3)
+    else if (cleaned.startsWith('66') && cleaned.length >= 11) cleaned = '0' + cleaned.slice(2)
+
     if (!cleaned) return
-    if (!/^0[689]\d{8}$/.test(cleaned)) {
-      toast.error('กรุณากรอกเบอร์มือถือให้ถูกต้อง (เช่น 0891234567)')
+    if (!/^0\d{8,9}$/.test(cleaned)) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (9-10 หลัก เช่น 0891234567 หรือ 021234567)')
       return
     }
 
@@ -288,21 +301,36 @@ export default function PublicBookingPage() {
 
     let allBookings: any[] = []
 
+    const searchPhoneInEvent = async (eId: string, eventTitle: string) => {
+      // 1. First search with cleaned phone
+      const { data, error } = await supabase.rpc('get_my_booking_by_phone', {
+        p_event_id: eId,
+        p_phone: cleaned
+      })
+      if (!error && data && data.length > 0) {
+        return data.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
+      }
+
+      // 2. If no result and cancelPhone differs from cleaned, fallback to raw input
+      if (cancelPhone.trim() !== cleaned) {
+        const { data: rawData } = await supabase.rpc('get_my_booking_by_phone', {
+          p_event_id: eId,
+          p_phone: cancelPhone.trim()
+        })
+        if (rawData && rawData.length > 0) {
+          return rawData.map((b: any) => ({ ...b, event_title: eventTitle, _event_id: eId }))
+        }
+      }
+
+      return []
+    }
+
     if (event?.is_group) {
-      const promises = childEvents.map(child =>
-        supabase.rpc('get_my_booking_by_phone', { p_event_id: child.id, p_phone: cancelPhone })
-          .then(res => res.data ? res.data.map((b: any) => ({ ...b, event_title: child.title, _event_id: child.id })) : [])
-      )
+      const promises = childEvents.map(child => searchPhoneInEvent(child.id, child.title))
       const results = await Promise.all(promises)
       allBookings = results.flat()
-    } else {
-      const { data, error } = await supabase.rpc('get_my_booking_by_phone', {
-        p_event_id: eventId,
-        p_phone: cancelPhone
-      })
-      if (!error && data) {
-        allBookings = data.map((b: any) => ({ ...b, event_title: event?.title || '', _event_id: eventId }))
-      }
+    } else if (eventId) {
+      allBookings = await searchPhoneInEvent(eventId, event?.title || '')
     }
 
     setCancelLoading(false)
@@ -330,7 +358,7 @@ export default function PublicBookingPage() {
       }
 
       if (!foundName) {
-        const possibleNames = Object.values(responses).filter(v => typeof v === 'string' && !/^0[689]\d{8}$/.test(v))
+        const possibleNames = Object.values(responses).filter(v => typeof v === 'string' && !/^0\d{8,9}$/.test(v.replace(/[-\s]/g, '')))
         foundName = (possibleNames[0] as string) || (Object.values(responses)[0] as string) || 'ลูกค้า'
       }
 
@@ -343,12 +371,13 @@ export default function PublicBookingPage() {
     }
   }
 
-  const handleCancelSpecificBooking = async (bEventId: string, bPhone: string) => {
+  const handleCancelSpecificBooking = async (bEventId: string, bPhone: string, bBookingId?: string) => {
     if (!confirm('ต้องการยกเลิกการจองนี้ใช่ไหม?')) return
 
     const { data: cancelSuccess } = await supabase.rpc('cancel_booking_by_phone', {
       p_event_id: bEventId,
-      p_phone: bPhone
+      p_phone: bPhone,
+      ...(bBookingId ? { p_booking_id: bBookingId } : {})
     })
 
     if (cancelSuccess) {
@@ -356,7 +385,7 @@ export default function PublicBookingPage() {
       // Refetch
       handleSearchAndCancel()
       // If the cancelled booking was the current myBooking, clear it
-      if (myBooking && bEventId === eventId) {
+      if (myBooking && (myBooking.id === bBookingId || bEventId === eventId)) {
         setMyBooking(null)
         setStep('view')
         localStorage.removeItem('booking_' + eventId)
@@ -449,13 +478,13 @@ export default function PublicBookingPage() {
           <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: 'var(--space-6)', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginBottom: 'var(--space-2)' }}>🔍 ค้นหาการจองของคุณ</h3>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem' }}>
-              กรอกเบอร์โทรศัพท์มือถือที่ใช้ในการจองเพื่อดูข้อมูลหรือยกเลิกคิว
+              กรอกเบอร์โทรศัพท์ที่ใช้ในการจองเพื่อดูข้อมูลหรือยกเลิกคิว (เช่น 0891234567 หรือ 021234567)
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <input
                 type="tel"
                 className="form-input"
-                placeholder="เช่น 0891234567"
+                placeholder="เช่น 0891234567 หรือ 021234567"
                 value={cancelPhone}
                 onChange={e => {
                   setCancelPhone(e.target.value)
@@ -464,10 +493,19 @@ export default function PublicBookingPage() {
                     setHasSearched(false)
                   }
                 }}
-                maxLength={10}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    handleSearchAndCancel()
+                  }
+                }}
+                maxLength={15}
                 style={{ flex: 1 }}
               />
-              <button className="btn btn-primary" onClick={handleSearchAndCancel} disabled={cancelLoading || cancelPhone.length < 10}>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSearchAndCancel} 
+                disabled={cancelLoading || cancelPhone.trim().replace(/\D/g, '').length < 9}
+              >
                 {cancelLoading ? 'ค้นหา...' : 'ค้นหา'}
               </button>
             </div>
@@ -494,16 +532,38 @@ export default function PublicBookingPage() {
                       const bEvent = event?.is_group ? childEvents.find(c => c.id === b._event_id) : event
                       const prefix = (bEvent?.settings as any)?.queue_prefix || ''
                       const formattedQueue = `${prefix}${String(b.queue_number).padStart(3, '0')}`
+                      const statusText = b.status === 'waiting' ? 'รอเรียก' : b.status === 'called' ? 'เรียกแล้ว' : b.status === 'completed' ? 'เสร็จสิ้น' : b.status
                       return (
-                        <div key={b.id} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{b.event_title}</div>
-                            <div style={{ color: 'var(--color-primary)', fontSize: '0.9rem' }}>คิวหมายเลข {formattedQueue}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>สถานะ: รอเรียก</div>
+                        <div key={b.id} style={{ padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', gap: '12px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.event_title}</div>
+                            <div style={{ color: 'var(--color-primary)', fontSize: '0.95rem', fontWeight: 600 }}>คิวหมายเลข {formattedQueue}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>สถานะ: {statusText}</div>
                           </div>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleCancelSpecificBooking(b._event_id, cancelPhone)}>
-                            ยกเลิก
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => {
+                                setMyBooking(b)
+                                setStep('done')
+                                setShowCancelModal(false)
+                                if (b._event_id) {
+                                  localStorage.setItem('booking_' + b._event_id, b.id)
+                                }
+                                toast.success('แสดงข้อมูลบัตรคิว')
+                              }}
+                            >
+                              🎫 ดูบัตรคิว
+                            </button>
+                            {b.status === 'waiting' && (
+                              <button 
+                                className="btn btn-danger btn-sm" 
+                                onClick={() => handleCancelSpecificBooking(b._event_id, cancelPhone.trim().replace(/[-\s]/g, ''), b.id)}
+                              >
+                                ยกเลิก
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
