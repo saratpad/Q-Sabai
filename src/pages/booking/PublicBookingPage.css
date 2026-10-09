@@ -253,7 +253,120 @@
   color: var(--color-text-muted);
 }
 
-/* Print styles for slip */
+/* Non-Ticket Registration Details Card */
+.booking-nonticket-card {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  text-align: left;
+}
+
+.booking-nonticket-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.booking-nonticket-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3));
+}
+
+.booking-nonticket-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #10b981;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.booking-nonticket-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.booking-details-summary-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.booking-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-3);
+}
+
+.booking-details-heading {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: 0.9375rem;
+}
+
+.booking-details-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.booking-details-label {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  min-width: 110px;
+  font-size: 0.875rem;
+}
+
+.booking-details-value {
+  color: var(--color-text-primary);
+  text-align: right;
+  word-break: break-word;
+  font-weight: 500;
+}
+
+.booking-details-value.highlight {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.booking-details-divider {
+  border-top: 1px dashed var(--color-border);
+  margin: 2px 0;
+}
+
+.booking-nonticket-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* Print styles for slip and registration summary */
 @media print {
   body {
     background: #fff !important;
@@ -265,6 +378,7 @@
   .booking-header,
   .booking-success-icon,
   .booking-success-title,
+  .booking-nonticket-actions,
   p {
     display: none !important;
   }
@@ -277,6 +391,19 @@
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+  }
+  .booking-details-summary-card {
+    border: 1px solid #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    padding: 24px !important;
+    max-width: 100% !important;
+    margin: 20px auto !important;
+    border-radius: 8px !important;
+  }
+  .booking-details-summary-card * {
+    color: #000 !important;
   }
   .standard-slip-preview {
     border: 1px dashed #000 !important;

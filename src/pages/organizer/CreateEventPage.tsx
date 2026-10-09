@@ -716,7 +716,7 @@ export default function CreateEventPage() {
                     <div className="confirm-item">
                       <span className="confirm-label">รูปแบบบัตร</span>
                       <span className="confirm-value">
-                        {ticketSettings.ticket_enabled !== false ? '🎫 ตั๋วคิวตกแต่ง' : '📋 รูปแบบจองคิวธรรมดา'}
+                        {ticketSettings.ticket_enabled !== false ? '🎫 ตั๋วคิวตกแต่ง' : '📋 แสดงเฉพาะรายละเอียดผู้จอง'}
                       </span>
                     </div>
                   </>

@@ -38,7 +38,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
     : String(queueNumber || '001')
 
   if (!isEnabled) {
-    // Normal Queue Format (รูปแบบจองคิวธรรมดา)
+    // Non-Ticket Mode (แสดงเฉพาะรายละเอียดผู้จองที่กรอกข้อมูลเข้ามา และระบุว่าจองสำเร็จแล้ว)
     return (
       <div 
         ref={ticketRef} 
@@ -46,30 +46,52 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         style={{
           border: '1px solid var(--color-border)',
           background: 'var(--color-bg-card)',
-          color: 'var(--color-text-primary)'
+          color: 'var(--color-text-primary)',
+          textAlign: 'left',
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
         }}
       >
-        <div className="standard-slip-icon">📋</div>
-        <div className="standard-slip-title" style={{ fontSize: sizeStyles.title }}>{eventTitle}</div>
-        <div className="standard-slip-label" style={{ fontSize: sizeStyles.label }}>หมายเลขคิวของคุณ</div>
-        <div className="standard-slip-number" style={{ color: numberColor || 'var(--color-primary)', fontSize: sizeStyles.number }}>
-          {displayQueue}
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '4px' }}>✅</div>
+          <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#10b981' }}>จองสำเร็จแล้ว</div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>ระบบบันทึกข้อมูลการจองเรียบร้อยแล้ว</div>
         </div>
-        {slotInfo && (
-          <div style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.95rem', margin: '4px 0' }}>
-            {slotInfo}
+
+        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>กิจกรรม:</span>
+            <span style={{ fontWeight: 600, textAlign: 'right', color: 'var(--color-text-primary)' }}>{eventTitle}</span>
           </div>
-        )}
-        <div className="standard-slip-divider" />
-        <div className="standard-slip-info">
-          จองเมื่อ {dateStr}
-        </div>
-        <div className="standard-slip-badge">
-          ⏳ รอเรียกคิว
+          {slotInfo && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+              <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>รอบเวลา:</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-primary)', textAlign: 'right' }}>{slotInfo}</span>
+            </div>
+          )}
+          <div style={{ borderTop: '1px dashed var(--color-border)', margin: '2px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>ชื่อ - นามสกุล:</span>
+            <span style={{ fontWeight: 500, textAlign: 'right' }}>สมชาย ใจดี (ตัวอย่าง)</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>เบอร์โทรศัพท์:</span>
+            <span style={{ fontWeight: 500, textAlign: 'right' }}>081-234-5678</span>
+          </div>
+          <div style={{ borderTop: '1px dashed var(--color-border)', margin: '2px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>ลำดับที่:</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-primary)', textAlign: 'right' }}>{displayQueue}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ color: 'var(--color-text-muted)', minWidth: '80px' }}>วันที่จอง:</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', textAlign: 'right' }}>{dateStr}</span>
+          </div>
         </div>
         {isInteractivePreview && (
-          <div style={{ marginTop: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            * ตัวอย่างรูปแบบจองคิวธรรมดา (ไม่ดาวน์โหลดตั๋วรูปภาพ)
+          <div style={{ marginTop: '14px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+            * โหมดไม่ใช้ตั๋วคิว: แสดงเฉพาะรายละเอียดผู้จอง
           </div>
         )}
       </div>

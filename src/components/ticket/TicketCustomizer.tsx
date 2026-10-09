@@ -101,7 +101,7 @@ export const TicketCustomizer: React.FC<TicketCustomizerProps> = ({
           <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
             {mergedSettings.ticket_enabled 
               ? 'เปิดใช้งานตั๋วคิวแบบตกแต่ง (สามารถปรับแต่งสี พื้นหลัง ขนาดฟอนต์ และดาวน์โหลดภาพตั๋วได้)' 
-              : 'ปิดใช้งานตั๋วคิว — ผู้จองจะได้รับ "รูปแบบจองคิวธรรมดา" (ใบคิวมาตรฐาน เรียบง่าย ไม่ดาวน์โหลดภาพตั๋ว)'}
+              : 'ปิดใช้งานตั๋วคิว — แสดงเฉพาะรายละเอียดผู้จองที่กรอกข้อมูลเข้ามา และระบุว่าจองสำเร็จแล้ว (ไม่แสดงตั๋วคิว)'}
           </div>
         </div>
         <label className="toggle">
@@ -343,14 +343,14 @@ export const TicketCustomizer: React.FC<TicketCustomizerProps> = ({
             </>
           ) : (
             <div style={{ padding: 'var(--space-4) 0', color: 'var(--color-text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--color-primary)', fontWeight: 600 }}>
-                ℹ️ กำลังใช้งาน: รูปแบบจองคิวธรรมดา (Normal Queue Mode)
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#10b981', fontWeight: 600 }}>
+                ✅ กำลังใช้งาน: ไม่เปิดใช้งานตั๋วคิว (แสดงเฉพาะรายละเอียดผู้จอง)
               </div>
               <p style={{ margin: '0 0 12px 0' }}>
-                เมื่อปิดตั๋วคิว ผู้ใช้ที่จองคิวจะได้รับการ์ดแสดงหมายเลขคิวแบบมาตรฐาน เรียบง่าย ชัดเจน และระบบจะ<strong>ไม่ดาวน์โหลดรูปตั๋วเป็นภาพอัตโนมัติ</strong>
+                เมื่อปิดตั๋วคิว ผู้ใช้ที่จองจะได้รับข้อความยืนยัน <strong>"จองสำเร็จแล้ว"</strong> พร้อม<strong>รายละเอียดข้อมูลผู้จองที่กรอกเข้ามาทั้งหมด</strong> โดยไม่มีตั๋วคิวและไม่ดาวน์โหลดภาพตั๋วอัตโนมัติ
               </p>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                เหมาะสำหรับงานบริการที่ต้องการความรวดเร็ว คล่องตัว หรือต้องการใบคิวแบบเรียบง่าย เช่น ธนาคาร โรงพยาบาล หรือหน่วยงานราชการ
+                เหมาะสำหรับงานสัมมนา อบรม หรือการลงทะเบียนที่ต้องการเพียงการบันทึกและแสดงข้อมูลผู้สมัคร
               </p>
             </div>
           )}

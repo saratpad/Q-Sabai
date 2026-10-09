@@ -255,6 +255,7 @@ export default function PublicBookingPage() {
       const phoneField = findPhoneField(customFields)
       const phoneValue = phoneField ? fieldValues[phoneField.id] : null
 
+      let resolvedBooking: any = null
       if (phoneValue) {
         const { data: bData } = await supabase.rpc('get_my_booking_by_phone', {
           p_event_id: event.id,
@@ -262,15 +263,32 @@ export default function PublicBookingPage() {
         })
 
         if (bData && bData.length > 0) {
-          setMyBooking(bData[0])
-          localStorage.setItem('booking_' + eventId, bData[0].id)
+          resolvedBooking = bData[0]
         }
+      }
+
+      if (!resolvedBooking) {
+        resolvedBooking = {
+          id: '',
+          event_id: event.id,
+          slot_id: selectedSlot?.id || null,
+          user_id: user?.id || null,
+          queue_number: 1,
+          status: 'waiting',
+          field_responses: fieldValues,
+          created_at: new Date().toISOString()
+        }
+      }
+
+      setMyBooking(resolvedBooking)
+      if (resolvedBooking.id) {
+        localStorage.setItem('booking_' + eventId, resolvedBooking.id)
       }
 
       setTicketDownloaded(false)
       setTicketImageUrl(null)
       setStep('done')
-      toast.success('จองคิวสำเร็จ! 🎉')
+      toast.success(isTicketEnabled ? 'จองคิวสำเร็จ! 🎉' : 'จองสำเร็จแล้ว! 🎉')
     } catch (err) {
       const msg = (err as Error).message
       if (msg.includes('duplicate') || msg.includes('already')) {
@@ -550,10 +568,11 @@ export default function PublicBookingPage() {
                                 if (b._event_id) {
                                   localStorage.setItem('booking_' + b._event_id, b.id)
                                 }
-                                toast.success('แสดงข้อมูลบัตรคิว')
+                                const bIsTicketEnabled = (bEvent?.settings as any)?.ticket_enabled !== false
+                                toast.success(bIsTicketEnabled ? 'แสดงข้อมูลบัตรคิว' : 'แสดงข้อมูลการจอง')
                               }}
                             >
-                              🎫 ดูบัตรคิว
+                              {(bEvent?.settings as any)?.ticket_enabled !== false ? '🎫 ดูบัตรคิว' : '📋 ดูข้อมูลการจอง'}
                             </button>
                             {b.status === 'waiting' && (
                               <button 
@@ -669,11 +688,11 @@ export default function PublicBookingPage() {
       {/* Done state - My booking */}
       {step === 'done' && myBooking && (
         <div className="booking-success-card glass-card fade-in">
-          <div className="booking-success-icon">{isTicketEnabled ? '🎫' : '📋'}</div>
-          <div className="booking-success-title">จองคิวสำเร็จ!</div>
-
           {isTicketEnabled ? (
             <>
+              <div className="booking-success-icon">🎫</div>
+              <div className="booking-success-title">จองคิวสำเร็จ!</div>
+
               {ticketImageUrl ? (
                 <img 
                   src={ticketImageUrl} 
@@ -716,41 +735,146 @@ export default function PublicBookingPage() {
               </div>
             </>
           ) : (
-            /* รูปแบบจองคิวธรรมดา */
-            <>
-              <div style={{ width: '100%', maxWidth: '340px', margin: '0 auto 16px auto' }}>
-                <TicketCard
-                  ticketRef={ticketRef}
-                  settings={{ ticket_enabled: false }}
-                  queueNumber={`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
-                  eventTitle={event.title}
-                  slotInfo={myBooking.slot_id && slots.find(s => s.id === myBooking.slot_id) ? `รอบ: ${slots.find(s => s.id === myBooking.slot_id)?.start_time.slice(0, 5)} - ${slots.find(s => s.id === myBooking.slot_id)?.end_time.slice(0, 5)} น.` : null}
-                  dateStr={formatThaiDateTime(myBooking.created_at)}
-                />
+            /* รูปแบบไม่ใช้ตั๋วคิว (Ticket Mode ปิดอยู่): แสดงเฉพาะรายละเอียดผู้จองที่กรอกข้อมูลเข้ามา และระบุว่าจองสำเร็จแล้ว */
+            <div className="booking-nonticket-card">
+              <div className="booking-nonticket-header">
+                <div className="booking-nonticket-icon">✅</div>
+                <h2 className="booking-nonticket-title">จองสำเร็จแล้ว</h2>
+                <p className="booking-nonticket-subtitle">
+                  ระบบได้บันทึกข้อมูลการจองของคุณเรียบร้อยแล้ว
+                </p>
               </div>
 
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>
-                กรุณารอฟังเรียกหมายเลขคิวของคุณ หรือสังเกตที่หน้าจอแสดงผลคิว
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div className="booking-details-summary-card">
+                <div className="booking-details-header">
+                  <div className="booking-details-heading">
+                    <span>📋</span> ข้อมูลการลงทะเบียน
+                  </div>
+                  <span className="badge badge-waiting" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+                    สถานะ: จองสำเร็จ
+                  </span>
+                </div>
+
+                <div className="booking-details-list">
+                  {/* ชื่องาน / กิจกรรม */}
+                  <div className="booking-details-row">
+                    <span className="booking-details-label">กิจกรรม</span>
+                    <span className="booking-details-value" style={{ fontWeight: 700 }}>
+                      {event.title}
+                    </span>
+                  </div>
+
+                  {/* วันที่ และรอบเวลา */}
+                  {(() => {
+                    const bookedSlot = myBooking.slot_id 
+                      ? (slots.find(s => s.id === myBooking.slot_id) || (myBooking as any).event_slots)
+                      : null
+                    if (!bookedSlot) return null
+                    return (
+                      <>
+                        {bookedSlot.slot_date && (
+                          <div className="booking-details-row">
+                            <span className="booking-details-label">วันที่</span>
+                            <span className="booking-details-value" style={{ fontWeight: 600 }}>
+                              {formatThaiSlotDate(bookedSlot.slot_date)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="booking-details-row">
+                          <span className="booking-details-label">รอบเวลา</span>
+                          <span className="booking-details-value highlight">
+                            {bookedSlot.start_time.slice(0, 5)} - {bookedSlot.end_time.slice(0, 5)} น.
+                          </span>
+                        </div>
+                      </>
+                    )
+                  })()}
+
+                  <div className="booking-details-divider" />
+
+                  {/* รายละเอียดผู้จองที่กรอกข้อมูลเข้ามา */}
+                  {(() => {
+                    const responses = (myBooking.field_responses || fieldValues || {}) as Record<string, any>
+                    const rows: { label: string; value: string }[] = []
+                    const seenKeys = new Set<string>()
+
+                    // 1. ตาม customFields
+                    customFields.forEach(f => {
+                      const val = responses[f.id]
+                      if (val !== undefined && val !== null && String(val).trim() !== '') {
+                        const displayVal = Array.isArray(val) ? val.join(', ') : String(val)
+                        rows.push({ label: f.label, value: displayVal })
+                        seenKeys.add(f.id)
+                      }
+                    })
+
+                    // 2. Extra keys ถ้ามี
+                    Object.entries(responses).forEach(([k, v]) => {
+                      if (!seenKeys.has(k) && v !== undefined && v !== null && String(v).trim() !== '') {
+                        const displayVal = Array.isArray(v) ? v.join(', ') : String(v)
+                        rows.push({ label: k, value: displayVal })
+                      }
+                    })
+
+                    if (rows.length === 0) {
+                      return (
+                        <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '6px 0', fontSize: '0.875rem' }}>
+                          ไม่มีข้อมูลเพิ่มเติมที่กรอกเข้ามา
+                        </div>
+                      )
+                    }
+
+                    return rows.map((r, idx) => (
+                      <div key={idx} className="booking-details-row">
+                        <span className="booking-details-label">{r.label}</span>
+                        <span className="booking-details-value">{r.value}</span>
+                      </div>
+                    ))
+                  })()}
+
+                  <div className="booking-details-divider" />
+
+                  {/* ลำดับที่ / หมายเลขคิว */}
+                  <div className="booking-details-row">
+                    <span className="booking-details-label">ลำดับที่</span>
+                    <span className="booking-details-value highlight">
+                      {`${(event.settings as any)?.queue_prefix || ''}${String(myBooking.queue_number).padStart(3, '0')}`}
+                    </span>
+                  </div>
+
+                  {/* วันเวลาที่ทำรายการ */}
+                  <div className="booking-details-row">
+                    <span className="booking-details-label">วันที่ทำรายการ</span>
+                    <span className="booking-details-value" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                      {formatThaiDateTime(myBooking.created_at)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="booking-nonticket-actions">
                 <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
-                  🖨️ พิมพ์ใบคิว
+                  🖨️ พิมพ์ข้อมูลการจอง
                 </button>
                 <button className="btn btn-danger btn-sm" onClick={handleCloseWindow}>
                   ✕ ปิดหน้าต่าง
                 </button>
                 {event.parent_id && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => {
-                    if (eventId) {
-                      localStorage.removeItem('booking_' + eventId)
-                    }
-                    window.location.href = `/book/${event.parent_id}`
-                  }} style={{ border: '1px solid var(--color-border)' }}>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      if (eventId) {
+                        localStorage.removeItem('booking_' + eventId)
+                      }
+                      window.location.href = `/book/${event.parent_id}`
+                    }}
+                    style={{ border: '1px solid var(--color-border)' }}
+                  >
                     ✕ เลือกกิจกรรมอื่น
                   </button>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
       )}
